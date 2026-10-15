@@ -3,5 +3,7 @@
 .cursor
 *.md
 *.bat
+*.docx
+supabase
 Dockerfile
 .dockerignore

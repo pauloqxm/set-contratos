@@ -321,6 +321,39 @@ h1 {
 
 .ata-time { font-weight: 800; color: var(--green-dark); white-space: nowrap; }
 
+.ata-user { font-size: 0.78rem; font-weight: 700; color: var(--green-dark); align-self: center; }
+
+.ata-salvas {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--white);
+}
+
+.ata-salvas summary { cursor: pointer; font-weight: 700; font-size: 0.88rem; }
+
+.ata-lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.ata-open {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.ata-open span { margin-left: auto; font-size: 0.75rem; color: var(--ink-soft); }
+
+.ata-open:hover, .ata-open.is-on { background: var(--green-soft); }
+
 .filters-bar { margin-top: 16px; }
 
 .kpi-strip {
@@ -1365,7 +1398,9 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #ata-login-note,
   body.printing-ata .ata-tools,
   body.printing-ata .ata-actions,
-  body.printing-ata .ata-sugestoes { display: none !important; }
+  body.printing-ata .ata-sugestoes,
+  body.printing-ata .ata-salvas,
+  body.printing-ata .ata-item .linkish { display: none !important; }
   body { background: white; }
   .topbar { position: static; box-shadow: none; }
   .topbar-actions, .filters, .chips, .pagination, .toolbar-actions, .banner, .alert-hint, .objeto-tip, .view-tabs { display: none !important; }

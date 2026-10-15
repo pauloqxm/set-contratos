@@ -12,5 +12,6 @@ const CONFIG = {
   supabaseUrl: "https://ftuycoafwraxaachidlh.supabase.co",
   supabaseKey: "sb_publishable_ChSkjs3XsoxyoAKAHF-P1A_kXT4cb2M",
   ssoAuthority: "https://sso.idt.org.br",
-  ssoClientId: "",
+  ssoClientId: "set_contratos",
+  ataFunction: "ata",
 };

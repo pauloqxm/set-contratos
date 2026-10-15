@@ -1,27 +1,126 @@
-/* Aba da ata. O rascunho fica no navegador. A gravação no Supabase espera o client_id do SSO. */
+/* Aba da ata: rascunho no navegador, login pelo SSO e gravação pela função "ata" do Supabase. */
 const Ata = (() => {
   const storageKey = "set-ata-rascunho";
   let draft = loadDraft();
+  let user = null;
+  const sso = createSso();
 
-  function loadDraft() {
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-      if (saved && Array.isArray(saved.itens)) return saved;
-    } catch (error) {
-      /* rascunho inválido volta ao vazio */
-    }
+  function createSso() {
+    if (!window.oidc || !CONFIG.ssoClientId) return null;
+    const base = `${location.origin}/`;
+    return new oidc.UserManager({
+      authority: CONFIG.ssoAuthority,
+      client_id: CONFIG.ssoClientId,
+      redirect_uri: base,
+      post_logout_redirect_uri: base,
+      response_type: "code",
+      scope: "openid profile email",
+      userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
+    });
+  }
+
+  function emptyDraft() {
     const today = new Date();
-    const iso = today.toISOString().slice(0, 10);
     return {
+      id: null,
       titulo: `Reunião de contratos ${today.toLocaleDateString("pt-BR")}`,
-      data: iso,
+      data: today.toISOString().slice(0, 10),
       participantes: "",
+      duracao: "",
       itens: [],
     };
   }
 
+  function loadDraft() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      if (saved && Array.isArray(saved.itens)) return { ...emptyDraft(), ...saved };
+    } catch (error) {
+      /* rascunho inválido volta ao vazio */
+    }
+    return emptyDraft();
+  }
+
   function saveDraft() {
     sessionStorage.setItem(storageKey, JSON.stringify(draft));
+  }
+
+  function note(text, isError) {
+    const element = document.getElementById("ata-login-note");
+    element.hidden = !text;
+    element.textContent = text || "";
+    element.classList.toggle("is-error", Boolean(isError));
+  }
+
+  function loggedIn() {
+    return Boolean(user && !user.expired);
+  }
+
+  function paintSession() {
+    const name = user?.profile?.name || user?.profile?.email || "";
+    const label = document.getElementById("ata-user");
+    label.hidden = !loggedIn();
+    label.textContent = loggedIn() ? `Entrou como ${name}` : "";
+    document.getElementById("ata-login").hidden = loggedIn() || !sso;
+    document.getElementById("ata-logout").hidden = !loggedIn();
+    document.getElementById("ata-save").disabled = !loggedIn();
+    document.getElementById("ata-salvas").hidden = !loggedIn();
+    if (!sso) note("O login do SSO não carregou. Dá para montar e imprimir a ata, mas não salvar.", true);
+    else if (!loggedIn()) note("Entre com a conta do SSO para salvar e abrir atas. O rascunho fica neste navegador.");
+    else note("");
+  }
+
+  async function api(method, params, body) {
+    const url = new URL(`${CONFIG.supabaseUrl}/functions/v1/${CONFIG.ataFunction}`);
+    Object.entries(params || {}).forEach(([key, value]) => url.searchParams.set(key, value));
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          apikey: CONFIG.supabaseKey,
+          "x-sso-token": user.id_token,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (error) {
+      throw new Error("Não foi possível falar com o banco. A função da ata precisa estar publicada no Supabase.");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      user = null;
+      paintSession();
+      throw new Error("O login expirou. Entre de novo para continuar.");
+    }
+    if (!response.ok) throw new Error(data.erro || `O banco respondeu com erro ${response.status}.`);
+    return data;
+  }
+
+  async function login() {
+    readMeta();
+    try {
+      await sso.signinRedirect({ state: { hash: location.hash } });
+    } catch (error) {
+      note(`O SSO recusou este endereço (${location.origin}). Peça ao administrador do SSO para marcar a aplicação ${CONFIG.ssoClientId} como pública e cadastrar ${location.origin}/ nas URLs de retorno.`, true);
+    }
+  }
+
+  async function handleCallback() {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("code") && !url.searchParams.has("error")) return null;
+    try {
+      user = await sso.signinRedirectCallback();
+      history.replaceState(null, "", url.pathname);
+      const hash = user.state && user.state.hash;
+      if (hash) location.hash = hash;
+      return "";
+    } catch (error) {
+      history.replaceState(null, "", url.pathname);
+      return error && error.error === "access_denied"
+        ? "Sua conta não tem acesso a este painel. Fale com o administrador do SSO."
+        : "Não foi possível concluir o login. Tente de novo.";
+    }
   }
 
   function itemKey(row) {
@@ -34,11 +133,9 @@ const Ata = (() => {
   }
 
   function show(view) {
-    const painel = document.getElementById("view-painel");
-    const ata = document.getElementById("view-ata");
     const isAta = view === "ata";
-    painel.hidden = isAta;
-    ata.hidden = !isAta;
+    document.getElementById("view-painel").hidden = isAta;
+    document.getElementById("view-ata").hidden = !isAta;
     document.querySelectorAll(".view-tab").forEach((button) => {
       const on = button.dataset.view === view;
       button.classList.toggle("is-on", on);
@@ -47,19 +144,20 @@ const Ata = (() => {
     if (isAta) {
       fillMeta();
       renderItems();
+      if (loggedIn()) loadList();
     }
+  }
+
+  function currentDuration() {
+    const elapsed = meetingElapsed();
+    return elapsed == null ? draft.duracao : formatDuration(elapsed);
   }
 
   function fillMeta() {
     document.getElementById("ata-titulo").value = draft.titulo;
     document.getElementById("ata-data").value = draft.data;
     document.getElementById("ata-participantes").value = draft.participantes;
-    const elapsed = meetingElapsed();
-    document.getElementById("ata-duracao").value = elapsed == null ? "Reunião não iniciada" : formatDuration(elapsed);
-    const note = document.getElementById("ata-login-note");
-    const ready = Boolean(CONFIG.ssoClientId);
-    note.hidden = ready;
-    document.getElementById("ata-save").disabled = !ready;
+    document.getElementById("ata-duracao").value = currentDuration() || "Reunião não iniciada";
   }
 
   function readMeta() {
@@ -74,7 +172,7 @@ const Ata = (() => {
     const current = draft.itens.find((item) => item.key === key);
     if (current) {
       if (!current.tempo && tempo) current.tempo = stampText(tempo);
-      return;
+      return false;
     }
     draft.itens.push({
       key,
@@ -85,16 +183,14 @@ const Ata = (() => {
       tempo: stampText(tempo),
       texto: "",
     });
+    return true;
   }
 
   function bringChecks() {
     let added = 0;
     state.meeting.checks.forEach((tempo, id) => {
       const row = state.rows.find((item) => item.id === id);
-      if (!row) return;
-      const before = draft.itens.length;
-      addRow(row, tempo);
-      if (draft.itens.length > before) added += 1;
+      if (row && addRow(row, tempo)) added += 1;
     });
     saveDraft();
     renderItems();
@@ -103,8 +199,7 @@ const Ata = (() => {
 
   function renderItems() {
     const host = document.getElementById("ata-itens");
-    const empty = document.getElementById("ata-vazio");
-    empty.hidden = draft.itens.length > 0;
+    document.getElementById("ata-vazio").hidden = draft.itens.length > 0;
     host.innerHTML = draft.itens
       .map((item, index) => {
         const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
@@ -143,11 +238,80 @@ const Ata = (() => {
       .join("");
   }
 
-  function boot() {
+  async function loadList() {
+    const list = document.getElementById("ata-lista");
+    try {
+      const data = await api("GET");
+      list.innerHTML = data.atas.length
+        ? data.atas
+            .map((ata) => {
+              const when = ata.data ? new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR") : "";
+              const current = ata.id === draft.id ? " is-on" : "";
+              return `<li><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(ata.autor_nome || "")}</span></button></li>`;
+            })
+            .join("")
+        : '<li class="hint">Nenhuma ata salva ainda.</li>';
+    } catch (error) {
+      list.innerHTML = "";
+      note(error.message, true);
+    }
+  }
+
+  async function openAta(id) {
+    try {
+      const { ata } = await api("GET", { id });
+      draft = {
+        id: ata.id,
+        titulo: ata.titulo,
+        data: ata.data,
+        participantes: ata.participantes,
+        duracao: ata.duracao,
+        itens: ata.itens.map((item) => ({ ...item, key: item.nup || item.objeto })),
+      };
+      saveDraft();
+      fillMeta();
+      renderItems();
+      loadList();
+      note(`Ata de ${new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR")} aberta.`);
+    } catch (error) {
+      note(error.message, true);
+    }
+  }
+
+  async function save() {
+    readMeta();
+    if (!loggedIn()) return login();
+    if (!draft.titulo || !draft.data) {
+      note("Informe o título e a data da reunião.", true);
+      return;
+    }
+    const button = document.getElementById("ata-save");
+    button.disabled = true;
+    draft.duracao = currentDuration() || "";
+    try {
+      const { id } = await api("POST", null, {
+        id: draft.id,
+        titulo: draft.titulo,
+        data: draft.data,
+        participantes: draft.participantes,
+        duracao: draft.duracao,
+        itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
+      });
+      draft.id = id;
+      saveDraft();
+      note(`Ata salva às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`);
+      loadList();
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      button.disabled = !loggedIn();
+    }
+  }
+
+  async function boot() {
     document.querySelector(".view-tabs").addEventListener("click", (event) => {
       const button = event.target.closest(".view-tab");
-      if (!button) return;
-      show(button.dataset.view);
+      if (button) show(button.dataset.view);
     });
 
     ["ata-titulo", "ata-data", "ata-participantes"].forEach((id) => {
@@ -157,8 +321,9 @@ const Ata = (() => {
     document.getElementById("ata-from-checks").addEventListener("click", () => {
       const added = bringChecks();
       if (!added && !state.meeting.checks.size) {
-        document.getElementById("ata-vazio").hidden = false;
-        document.getElementById("ata-vazio").textContent = "Nenhum contrato foi marcado como lido nesta reunião.";
+        const empty = document.getElementById("ata-vazio");
+        empty.hidden = false;
+        empty.textContent = "Nenhum contrato foi marcado como lido nesta reunião.";
       }
     });
 
@@ -168,26 +333,39 @@ const Ata = (() => {
       if (!button) return;
       const row = state.rows.find((item) => item.id === button.dataset.add);
       if (!row) return;
-      const tempo = state.meeting.checks.get(row.id);
-      addRow(row, tempo);
+      addRow(row, state.meeting.checks.get(row.id));
       saveDraft();
       renderItems();
       document.getElementById("ata-busca").value = "";
       suggestions("");
     });
 
-    document.getElementById("ata-itens").addEventListener("input", (event) => {
+    const items = document.getElementById("ata-itens");
+    items.addEventListener("input", (event) => {
       const field = event.target.closest("textarea[data-texto]");
       if (!field) return;
       draft.itens[Number(field.dataset.texto)].texto = field.value;
       saveDraft();
     });
-    document.getElementById("ata-itens").addEventListener("click", (event) => {
+    items.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-remove]");
       if (!button) return;
       draft.itens.splice(Number(button.dataset.remove), 1);
       saveDraft();
       renderItems();
+    });
+
+    document.getElementById("ata-lista").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-open]");
+      if (button) openAta(button.dataset.open);
+    });
+
+    document.getElementById("ata-new").addEventListener("click", () => {
+      draft = emptyDraft();
+      saveDraft();
+      fillMeta();
+      renderItems();
+      loadList();
     });
 
     document.getElementById("ata-print").addEventListener("click", () => {
@@ -197,16 +375,19 @@ const Ata = (() => {
     });
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
 
-    document.getElementById("ata-save").addEventListener("click", () => {
-      readMeta();
-      const note = document.getElementById("ata-login-note");
-      note.hidden = false;
-      note.textContent = CONFIG.ssoClientId
-        ? "A gravação no banco entra no próximo passo."
-        : "Ainda não dá para gravar. Falta cadastrar o client_id deste painel no SSO.";
-    });
+    document.getElementById("ata-save").addEventListener("click", save);
+    document.getElementById("ata-login").addEventListener("click", login);
+    document.getElementById("ata-logout").addEventListener("click", () => sso.signoutRedirect());
 
-    fillMeta();
+    let callback = null;
+    if (sso) {
+      callback = await handleCallback();
+      if (!user) user = await sso.getUser();
+    }
+    paintSession();
+    if (callback != null) show("ata");
+    else fillMeta();
+    if (callback) note(callback, true);
   }
 
   document.addEventListener("DOMContentLoaded", boot);

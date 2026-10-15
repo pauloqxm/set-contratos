@@ -2,6 +2,8 @@
 
 Painel estático para acompanhar os contratos da Secretaria do Trabalho do Ceará. Ele lê a planilha publicada **CONTROLE DE CONTRATOS** e monta indicadores, alertas de vencimento, gráficos e a lista filtrável.
 
+Endereço publicado: [https://set-contratos.up.railway.app/](https://set-contratos.up.railway.app/)
+
 Não há etapa de build. A página é HTML, CSS e JavaScript, com PapaParse, Chart.js e SheetJS carregados por CDN.
 
 ## Como abrir
@@ -31,11 +33,33 @@ docker build -t set-contratos .
 docker run --rm -p 8080:8080 set-contratos
 ```
 
-Abra `http://localhost:8080`. No Railway, o serviço detecta o `Dockerfile` e usa a mesma porta.
+Abra `http://localhost:8080`. No Railway, o serviço detecta o `Dockerfile` e usa a mesma porta; o site fica em `https://set-contratos.up.railway.app/`.
 
 A planilha precisa continuar publicada na web. O painel busca o CSV a cada carregamento e quando a pessoa clica em **Atualizar**. Se a rede falhar, a última cópia salva no navegador é exibida, com aviso de data.
 
-Quando o SSO deste painel for cadastrado, a URL de retorno tem de ser a raiz do site publicado, com a barra final.
+## Ata da reunião
+
+A aba **Ata** entra pelo SSO (`https://sso.idt.org.br`, aplicação `set_contratos`) e grava no Supabase `ftuycoafwraxaachidlh`. O painel de contratos continua aberto; só a ata pede login.
+
+O site não tem servidor, então o login é feito no navegador, sem segredo. No `/admin` do SSO, a aplicação `set_contratos` precisa estar como:
+
+- **Aplicação pública** marcada. Com ela confidencial, o navegador não consegue trocar o código pelo token.
+- **URLs de retorno** e **pós-logout**: a raiz de cada endereço do painel, com a barra final — `https://set-contratos.up.railway.app/` e, para teste local, `http://127.0.0.1:8080/`.
+- **URL de entrada (portal)**: `https://set-contratos.up.railway.app/`.
+- Acesso liberado para quem vai usar a ata (dá para copiar os acessos do SET Projetos).
+
+No Supabase, uma vez:
+
+1. **SQL Editor**: rode [`supabase/ata.sql`](supabase/ata.sql). Ele cria `ata_reunioes` e `ata_itens`, fechadas para a chave publicável.
+2. **Edge Functions**: publique [`supabase/functions/ata/index.ts`](supabase/functions/ata/index.ts) com o nome `ata` e a verificação de JWT **desligada**. Quem confere o acesso é o token do SSO. Pela CLI:
+
+   ```bash
+   supabase functions deploy ata --project-ref ftuycoafwraxaachidlh --no-verify-jwt
+   ```
+
+3. A função já aceita `https://set-contratos.up.railway.app` e o endereço local. Só se o painel mudar de endereço: em **Edge Functions → Secrets**, crie `ALLOWED_ORIGINS` com os endereços separados por vírgula, sem barra final.
+
+A chave de serviço fica só no ambiente da função; o Supabase a injeta sozinho. Ela e o `client_secret` do SSO não entram neste repositório.
 
 ## Trocar a planilha
 

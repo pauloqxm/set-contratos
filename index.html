@@ -329,14 +329,22 @@
         <header class="ata-head">
           <div>
             <h2>Ata da reunião</h2>
-            <p class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até a gravação no banco.</p>
+            <p class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
           </div>
           <div class="ata-actions">
+            <span id="ata-user" class="ata-user" hidden></span>
+            <button type="button" id="ata-login" class="btn-ghost btn-small">Entrar</button>
+            <button type="button" id="ata-logout" class="btn-ghost btn-small" hidden>Sair</button>
+            <button type="button" id="ata-new" class="btn-ghost btn-small">Nova ata</button>
             <button type="button" id="ata-print" class="btn-ghost btn-small">Imprimir ata</button>
-            <button type="button" id="ata-save" class="btn-run btn-small">Salvar ata</button>
+            <button type="button" id="ata-save" class="btn-run btn-small" disabled>Salvar ata</button>
           </div>
         </header>
-        <p id="ata-login-note" class="banner">O login do SSO deste painel ainda não foi cadastrado. Dá para montar e imprimir a ata; a gravação no banco entra quando houver o client_id.</p>
+        <p id="ata-login-note" class="banner" role="status"></p>
+        <details id="ata-salvas" class="ata-salvas" hidden>
+          <summary>Atas salvas</summary>
+          <ul id="ata-lista" class="ata-lista"></ul>
+        </details>
         <div class="ata-meta">
           <label>Título
             <input id="ata-titulo" type="text" maxlength="160" />
@@ -392,6 +400,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.1.0/dist/browser/oidc-client-ts.min.js"></script>
   <script defer src="js/config.js"></script>
   <script defer src="js/data.js"></script>
   <script defer src="js/charts.js"></script>
