@@ -37,16 +37,22 @@ Abra `http://localhost:8080`. No Railway, o serviço detecta o `Dockerfile` e us
 
 A planilha precisa continuar publicada na web. O painel busca o CSV a cada carregamento e quando a pessoa clica em **Atualizar**. Se a rede falhar, a última cópia salva no navegador é exibida, com aviso de data.
 
-## Ata da reunião
+## Acesso pelo SSO
 
-A aba **Ata** entra pelo SSO (`https://sso.idt.org.br`, aplicação `set_contratos`) e grava no Supabase `ftuycoafwraxaachidlh`. O painel de contratos continua aberto; só a ata pede login.
+O site inteiro (abas **Painel** e **Ata**) só abre depois do login no SSO (`https://sso.idt.org.br`, aplicação `set_contratos`). Quem não tem sessão vai para a tela do SSO; quem não tem acesso vê um aviso. O botão **Sair** fica na barra superior.
 
 O site não tem servidor, então o login é feito no navegador, sem segredo. No `/admin` do SSO, a aplicação `set_contratos` precisa estar como:
 
-- **Aplicação pública** marcada. Com ela confidencial, o navegador não consegue trocar o código pelo token.
+- **Aplicação pública** marcada. Com ela confidencial, o navegador não consegue trocar o código pelo token, e o painel mostra “O SSO recusou este endereço”.
 - **URLs de retorno** e **pós-logout**: a raiz de cada endereço do painel, com a barra final — `https://set-contratos.up.railway.app/` e, para teste local, `http://127.0.0.1:8080/`.
 - **URL de entrada (portal)**: `https://set-contratos.up.railway.app/`.
-- Acesso liberado para quem vai usar a ata (dá para copiar os acessos do SET Projetos).
+- Acesso liberado para quem vai usar o painel (dá para copiar os acessos do SET Projetos).
+
+O login protege a tela, não a planilha: quem tiver o link do CSV publicado ainda consegue baixá-lo. As atas, no Supabase, só são lidas e gravadas com o token do SSO.
+
+## Ata da reunião
+
+A aba **Ata** grava no Supabase `ftuycoafwraxaachidlh`, usando o mesmo login do painel.
 
 No Supabase, uma vez:
 

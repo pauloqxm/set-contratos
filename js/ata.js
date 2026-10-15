@@ -1,23 +1,9 @@
 /* Aba da ata: rascunho no navegador, login pelo SSO e gravação pela função "ata" do Supabase. */
 const Ata = (() => {
   const storageKey = "set-ata-rascunho";
+  const returnKey = "set-ata-voltar";
   let draft = loadDraft();
-  let user = null;
-  const sso = createSso();
-
-  function createSso() {
-    if (!window.oidc || !CONFIG.ssoClientId) return null;
-    const base = `${location.origin}/`;
-    return new oidc.UserManager({
-      authority: CONFIG.ssoAuthority,
-      client_id: CONFIG.ssoClientId,
-      redirect_uri: base,
-      post_logout_redirect_uri: base,
-      response_type: "code",
-      scope: "openid profile email",
-      userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
-    });
-  }
+  let expired = false;
 
   function emptyDraft() {
     const today = new Date();
@@ -52,24 +38,6 @@ const Ata = (() => {
     element.classList.toggle("is-error", Boolean(isError));
   }
 
-  function loggedIn() {
-    return Boolean(user && !user.expired);
-  }
-
-  function paintSession() {
-    const name = user?.profile?.name || user?.profile?.email || "";
-    const label = document.getElementById("ata-user");
-    label.hidden = !loggedIn();
-    label.textContent = loggedIn() ? `Entrou como ${name}` : "";
-    document.getElementById("ata-login").hidden = loggedIn() || !sso;
-    document.getElementById("ata-logout").hidden = !loggedIn();
-    document.getElementById("ata-save").disabled = !loggedIn();
-    document.getElementById("ata-salvas").hidden = !loggedIn();
-    if (!sso) note("O login do SSO não carregou. Dá para montar e imprimir a ata, mas não salvar.", true);
-    else if (!loggedIn()) note("Entre com a conta do SSO para salvar e abrir atas. O rascunho fica neste navegador.");
-    else note("");
-  }
-
   async function api(method, params, body) {
     const url = new URL(`${CONFIG.supabaseUrl}/functions/v1/${CONFIG.ataFunction}`);
     Object.entries(params || {}).forEach(([key, value]) => url.searchParams.set(key, value));
@@ -79,7 +47,7 @@ const Ata = (() => {
         method,
         headers: {
           apikey: CONFIG.supabaseKey,
-          "x-sso-token": user.id_token,
+          "x-sso-token": SSO.user().id_token,
           ...(body ? { "Content-Type": "application/json" } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -89,38 +57,17 @@ const Ata = (() => {
     }
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
-      user = null;
-      paintSession();
-      throw new Error("O login expirou. Entre de novo para continuar.");
+      expired = true;
+      throw new Error("O login expirou. Clique em Salvar ata para entrar de novo; o rascunho fica guardado.");
     }
     if (!response.ok) throw new Error(data.erro || `O banco respondeu com erro ${response.status}.`);
     return data;
   }
 
-  async function login() {
+  function relogin() {
     readMeta();
-    try {
-      await sso.signinRedirect({ state: { hash: location.hash } });
-    } catch (error) {
-      note(`O SSO recusou este endereço (${location.origin}). Peça ao administrador do SSO para marcar a aplicação ${CONFIG.ssoClientId} como pública e cadastrar ${location.origin}/ nas URLs de retorno.`, true);
-    }
-  }
-
-  async function handleCallback() {
-    const url = new URL(location.href);
-    if (!url.searchParams.has("code") && !url.searchParams.has("error")) return null;
-    try {
-      user = await sso.signinRedirectCallback();
-      history.replaceState(null, "", url.pathname);
-      const hash = user.state && user.state.hash;
-      if (hash) location.hash = hash;
-      return "";
-    } catch (error) {
-      history.replaceState(null, "", url.pathname);
-      return error && error.error === "access_denied"
-        ? "Sua conta não tem acesso a este painel. Fale com o administrador do SSO."
-        : "Não foi possível concluir o login. Tente de novo.";
-    }
+    sessionStorage.setItem(returnKey, "1");
+    SSO.login();
   }
 
   function itemKey(row) {
@@ -144,7 +91,7 @@ const Ata = (() => {
     if (isAta) {
       fillMeta();
       renderItems();
-      if (loggedIn()) loadList();
+      loadList();
     }
   }
 
@@ -280,7 +227,7 @@ const Ata = (() => {
 
   async function save() {
     readMeta();
-    if (!loggedIn()) return login();
+    if (expired) return relogin();
     if (!draft.titulo || !draft.data) {
       note("Informe o título e a data da reunião.", true);
       return;
@@ -304,11 +251,12 @@ const Ata = (() => {
     } catch (error) {
       note(error.message, true);
     } finally {
-      button.disabled = !loggedIn();
+      button.disabled = false;
     }
   }
 
   async function boot() {
+    if (!(await SSO.exigirLogin())) return;
     document.querySelector(".view-tabs").addEventListener("click", (event) => {
       const button = event.target.closest(".view-tab");
       if (button) show(button.dataset.view);
@@ -376,18 +324,13 @@ const Ata = (() => {
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
 
     document.getElementById("ata-save").addEventListener("click", save);
-    document.getElementById("ata-login").addEventListener("click", login);
-    document.getElementById("ata-logout").addEventListener("click", () => sso.signoutRedirect());
 
-    let callback = null;
-    if (sso) {
-      callback = await handleCallback();
-      if (!user) user = await sso.getUser();
+    if (sessionStorage.getItem(returnKey)) {
+      sessionStorage.removeItem(returnKey);
+      show("ata");
+    } else {
+      fillMeta();
     }
-    paintSession();
-    if (callback != null) show("ata");
-    else fillMeta();
-    if (callback) note(callback, true);
   }
 
   document.addEventListener("DOMContentLoaded", boot);

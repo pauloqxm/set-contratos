@@ -321,7 +321,40 @@ h1 {
 
 .ata-time { font-weight: 800; color: var(--green-dark); white-space: nowrap; }
 
-.ata-user { font-size: 0.78rem; font-weight: 700; color: var(--green-dark); align-self: center; }
+.session-info { display: grid; gap: 2px; }
+
+.session-info p { margin: 0; }
+
+.sso-user { font-size: 0.72rem; font-weight: 700; color: var(--green-dark); text-align: right; white-space: nowrap; }
+
+body:not(.is-authed) > .skip,
+body:not(.is-authed) > .topbar,
+body:not(.is-authed) > .page { display: none; }
+
+body.is-authed > .auth-gate { display: none; }
+
+.auth-gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card {
+  max-width: 460px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--orange);
+  border-radius: 12px;
+  padding: 28px 24px;
+}
+
+.auth-card h1 { margin: 4px 0 12px; }
+
+.auth-message { color: var(--ink-soft); line-height: 1.5; }
+
+.auth-card a { font-size: 0.8rem; color: var(--blue); }
 
 .ata-salvas {
   margin-top: 12px;

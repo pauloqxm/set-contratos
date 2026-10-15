@@ -43,6 +43,7 @@ const ui = {};
 document.addEventListener("DOMContentLoaded", boot);
 
 async function boot() {
+  if (!(await SSO.exigirLogin())) return;
   ui.count = document.getElementById("kpi-count");
   ui.countHint = document.getElementById("kpi-count-hint");
   ui.updated = document.getElementById("updated");

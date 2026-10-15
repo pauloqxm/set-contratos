@@ -13,6 +13,16 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <main id="auth-gate" class="auth-gate" aria-live="polite">
+    <div class="auth-card">
+      <p class="eyebrow">SET / IDT · Secretaria do Trabalho</p>
+      <h1>Gestão dos Contratos</h1>
+      <p id="auth-message" class="auth-message">Conferindo o acesso…</p>
+      <button type="button" id="auth-retry" class="btn-run" hidden>Entrar</button>
+      <p><a href="https://sso.idt.org.br/conta">Meus sistemas</a></p>
+    </div>
+  </main>
+
   <a class="skip" href="#tabela">Ir para a tabela</a>
 
   <header class="topbar">
@@ -30,10 +40,14 @@
         <button type="button" class="view-tab" data-view="ata" aria-selected="false">Ata</button>
       </nav>
       <div class="topbar-actions">
-        <p id="updated" class="updated">Carregando a planilha…</p>
+        <div class="session-info">
+          <p id="updated" class="updated">Carregando a planilha…</p>
+          <p id="sso-user" class="sso-user"></p>
+        </div>
         <div class="action-row">
           <button type="button" id="btn-refresh" class="btn-run">Atualizar</button>
           <button type="button" id="btn-reset" class="btn-ghost">Redefinir filtros</button>
+          <button type="button" id="btn-logout" class="btn-ghost" title="Sair do painel e do SSO">Sair</button>
         </div>
       </div>
     </div>
@@ -332,16 +346,13 @@
             <p class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
           </div>
           <div class="ata-actions">
-            <span id="ata-user" class="ata-user" hidden></span>
-            <button type="button" id="ata-login" class="btn-ghost btn-small">Entrar</button>
-            <button type="button" id="ata-logout" class="btn-ghost btn-small" hidden>Sair</button>
             <button type="button" id="ata-new" class="btn-ghost btn-small">Nova ata</button>
             <button type="button" id="ata-print" class="btn-ghost btn-small">Imprimir ata</button>
-            <button type="button" id="ata-save" class="btn-run btn-small" disabled>Salvar ata</button>
+            <button type="button" id="ata-save" class="btn-run btn-small">Salvar ata</button>
           </div>
         </header>
-        <p id="ata-login-note" class="banner" role="status"></p>
-        <details id="ata-salvas" class="ata-salvas" hidden>
+        <p id="ata-login-note" class="banner" role="status" hidden></p>
+        <details id="ata-salvas" class="ata-salvas">
           <summary>Atas salvas</summary>
           <ul id="ata-lista" class="ata-lista"></ul>
         </details>
@@ -402,6 +413,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.1.0/dist/browser/oidc-client-ts.min.js"></script>
   <script defer src="js/config.js"></script>
+  <script defer src="js/sso.js"></script>
   <script defer src="js/data.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
