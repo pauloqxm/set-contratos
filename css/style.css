@@ -122,7 +122,7 @@ h1, h2, h3, p { margin: 0; }
   color: var(--green-dark);
 }
 
-.heading { flex: 1; text-align: left; min-width: 0; }
+.heading { flex: 0 1 auto; text-align: left; min-width: 0; }
 
 .heading h1 { margin-top: 2px; }
 
@@ -145,7 +145,7 @@ h1 {
   text-align: left;
 }
 
-.topbar-actions { flex: none; display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.topbar-actions { flex: none; display: flex; flex-direction: row; align-items: center; gap: 12px; margin-left: auto; }
 
 .updated { font-size: 0.72rem; color: var(--ink-soft); text-align: right; white-space: nowrap; }
 
@@ -194,7 +194,7 @@ h1 {
 .view-tabs {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  flex: none;
 }
 
 .view-tab {
@@ -1303,9 +1303,10 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 
 @media (max-width: 860px) {
   .topbar-inner { flex-wrap: wrap; }
-  .heading { order: 2; flex: 1 1 100%; }
+  .heading { order: 2; flex: 1 1 auto; }
   h1 { white-space: normal; }
-  .topbar-actions { order: 3; width: 100%; margin-left: 0; align-items: flex-start; flex-wrap: wrap; }
+  .view-tabs { order: 3; }
+  .topbar-actions { order: 4; width: 100%; margin-left: 0; align-items: flex-start; flex-wrap: wrap; }
   .updated { text-align: left; white-space: normal; }
   .kpi-strip, .kpi-money { grid-template-columns: 1fr; }
   .filter { max-width: none; }
