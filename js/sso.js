@@ -1,9 +1,19 @@
 /* Login pelo SET SSO. Sem backend: Authorization Code + PKCE feito pelo navegador. */
 const SSO = (() => {
   const base = `${location.origin}/`;
+  const sso = CONFIG.ssoAuthority;
   const manager = window.oidc && CONFIG.ssoClientId
     ? new oidc.UserManager({
-        authority: CONFIG.ssoAuthority,
+        authority: sso,
+        // O SSO não libera CORS na descoberta (.well-known); só o /connect/token precisa dele.
+        metadata: {
+          issuer: `${sso}/`,
+          authorization_endpoint: `${sso}/connect/authorize`,
+          token_endpoint: `${sso}/connect/token`,
+          end_session_endpoint: `${sso}/connect/logout`,
+          userinfo_endpoint: `${sso}/connect/userinfo`,
+          jwks_uri: `${sso}/.well-known/jwks`,
+        },
         client_id: CONFIG.ssoClientId,
         redirect_uri: base,
         post_logout_redirect_uri: base,
@@ -27,14 +37,18 @@ const SSO = (() => {
     document.body.classList.add("is-authed");
   }
 
+  function refused() {
+    gate(
+      `O SSO recusou este endereço (${location.origin}). Peça ao administrador do SSO para marcar a aplicação ${CONFIG.ssoClientId} como pública e cadastrar ${base} nas URLs de retorno.`,
+      true,
+    );
+  }
+
   async function login() {
     try {
       await manager.signinRedirect({ state: { hash: location.hash } });
     } catch (error) {
-      gate(
-        `O SSO recusou este endereço (${location.origin}). Peça ao administrador do SSO para marcar a aplicação ${CONFIG.ssoClientId} como pública e cadastrar ${base} nas URLs de retorno.`,
-        true,
-      );
+      refused();
     }
     return null;
   }
@@ -53,6 +67,8 @@ const SSO = (() => {
         history.replaceState(null, "", url.pathname);
         if (error && error.error === "access_denied") {
           gate("Sua conta não tem acesso a este painel. Fale com o administrador do SSO.", false);
+        } else if (error instanceof TypeError || /fetch|network/i.test(String(error && error.message))) {
+          refused();
         } else {
           gate("Não foi possível concluir o login. Tente de novo.", true);
         }
