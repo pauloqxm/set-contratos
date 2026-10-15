@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Gestão dos Contratos — SET / IDT</title>
+  <meta name="description" content="Painel de acompanhamento dos contratos da Secretaria do Trabalho do Ceará." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2339B54A'/%3E%3Cpath d='M8 16.2 13.2 21.4 24 10.6' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <a class="skip" href="#tabela">Ir para a tabela</a>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand" aria-label="Logos institucionais">
+        <img class="logo logo-set" src="https://raw.githubusercontent.com/pauloqxm/set-casa/main/web/static/img/logo-set.jpg" alt="Ceará — Governo do Estado · Secretaria do Trabalho" width="120" height="120" />
+        <img class="logo logo-idt" src="https://raw.githubusercontent.com/pauloqxm/set-casa/main/web/static/img/logo-idt.png" alt="Instituto de Desenvolvimento do Trabalho" width="220" height="72" />
+      </div>
+      <div class="heading">
+        <p class="eyebrow">SET / IDT · Secretaria do Trabalho</p>
+        <h1>Gestão dos Contratos</h1>
+      </div>
+      <div class="topbar-actions">
+        <p id="updated" class="updated">Carregando a planilha…</p>
+        <div class="action-row">
+          <button type="button" id="btn-refresh" class="btn-run">Atualizar</button>
+          <button type="button" id="btn-reset" class="btn-ghost">Redefinir filtros</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap page">
+    <div id="banner" class="banner" role="status" hidden></div>
+
+    <nav class="view-tabs" aria-label="Seções do painel">
+      <button type="button" class="view-tab is-on" data-view="painel" aria-selected="true">Painel</button>
+      <button type="button" class="view-tab" data-view="ata" aria-selected="false">Ata</button>
+    </nav>
+
+    <div id="view-painel">
+    <section class="filters-bar" aria-label="Filtros">
+      <h2 class="sr-only">Filtros</h2>
+      <div id="filters" class="filters">
+          <div class="filter" data-key="situacao">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-situacao">
+              <span class="filter-label">Situação</span>
+            </button>
+            <div id="menu-situacao" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de situação" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="orgao">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-orgao">
+              <span class="filter-label">Órgão</span>
+            </button>
+            <div id="menu-orgao" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de órgão" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="categoria">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-categoria">
+              <span class="filter-label">Categoria</span>
+            </button>
+            <div id="menu-categoria" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de categoria" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="modalidade">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-modalidade">
+              <span class="filter-label">Modalidade</span>
+            </button>
+            <div id="menu-modalidade" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de modalidade" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="gestor">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-gestor">
+              <span class="filter-label">Gestor</span>
+            </button>
+            <div id="menu-gestor" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de gestor" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="fiscal">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-fiscal">
+              <span class="filter-label">Fiscal</span>
+            </button>
+            <div id="menu-fiscal" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de fiscal" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <div class="filter" data-key="contratada">
+            <button type="button" class="filter-btn" aria-expanded="false" aria-controls="menu-contratada">
+              <span class="filter-label">Contratada</span>
+            </button>
+            <div id="menu-contratada" class="filter-menu" hidden>
+              <div class="filter-menu-bar">
+                <input type="search" class="filter-search" placeholder="Filtrar opções" aria-label="Filtrar opções de contratada" />
+                <button type="button" class="linkish js-clear-dim">Limpar</button>
+              </div>
+              <div class="filter-options"></div>
+            </div>
+          </div>
+          <label class="search">
+            <span class="sr-only">Buscar</span>
+            <input id="search" type="search" placeholder="Buscar objeto, NUP, contrato, contratada, órgão ou gestor" autocomplete="off" />
+          </label>
+        </div>
+    </section>
+
+    <section class="kpi-strip" aria-label="Indicadores">
+      <article class="kpi-block">
+        <div class="kpi-head-row">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><rect x="6" y="4" width="16" height="20" rx="2" fill="#E8F7EA" stroke="#39B54A" stroke-width="1.6"/><rect x="10" y="8" width="16" height="20" rx="2" fill="#fff" stroke="#2F9A3D" stroke-width="1.6"/><path d="M14 14h8M14 18h8M14 22h5" stroke="#39B54A" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <p class="kpi-label">Carteira</p>
+        </div>
+        <strong id="kpi-count" class="kpi-figure">—</strong>
+        <p id="kpi-count-hint" class="kpi-meta">—</p>
+      </article>
+      <article class="kpi-block">
+        <div class="kpi-head-row">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#E6F3FB" stroke="#0071BC" stroke-width="1.6"/><path d="M16 8.5v15M12.2 11.5h5.2a2.4 2.4 0 0 1 0 4.8H13.6a2.4 2.4 0 0 0 0 4.8h6.2" fill="none" stroke="#0071BC" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <p class="kpi-label">Valor contratado</p>
+        </div>
+        <strong id="kpi-valor" class="kpi-figure">—</strong>
+        <div class="stack-bar" id="stack-fontes" aria-hidden="true">
+          <span id="bar-tesouro" class="stack-tesouro"></span>
+          <span id="bar-outras" class="stack-outras"></span>
+        </div>
+        <p id="kpi-fontes" class="kpi-meta">Tesouro e outras fontes</p>
+      </article>
+      <article class="kpi-block">
+        <div class="kpi-head-row">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M8 20a8 8 0 1 1 16 0" fill="none" stroke="#E4E4E4" stroke-width="3" stroke-linecap="round"/><path d="M8 20a8 8 0 0 1 12.5-6.6" fill="none" stroke="#39B54A" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="20" r="2" fill="#2F9A3D"/></svg>
+          </span>
+          <p class="kpi-label">Execução</p>
+        </div>
+        <strong id="kpi-exec" class="kpi-figure kpi-ok">—</strong>
+        <div class="progress" aria-hidden="true"><span id="bar-exec"></span></div>
+        <p id="kpi-saldo" class="kpi-meta">—</p>
+      </article>
+      <button type="button" id="kpi-vencidos" class="kpi-block kpi-action" aria-pressed="false">
+        <span class="kpi-head-row">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="19" rx="2" fill="#FBEAE8" stroke="#C1443C" stroke-width="1.6"/><path d="M5 13h22M11 5v5M21 5v5" fill="none" stroke="#C1443C" stroke-width="1.6" stroke-linecap="round"/><path d="M12 20.5 14.2 22.7 20.2 16.7" fill="none" stroke="#C1443C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="kpi-label">Vencidos</span>
+        </span>
+        <strong id="kpi-vencidos-num" class="kpi-figure kpi-danger">—</strong>
+        <span id="kpi-vencidos-meta" class="kpi-meta">Clique para filtrar</span>
+      </button>
+      <div class="kpi-block">
+        <p class="kpi-label">Prazos</p>
+        <button type="button" id="alert-45" class="prazo" data-alerta="45" aria-pressed="false">
+          <span class="prazo-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <g stroke="#F15A24" stroke-width="2.2" stroke-linecap="round">
+                <path d="M24 4v5"/><path d="M11 9l3.4 3.4"/><path d="M37 9l-3.4 3.4"/><path d="M6 20h5"/><path d="M37 20h5"/>
+              </g>
+              <path d="M14 30c0-6.2 4.5-11.2 10-11.2S34 23.8 34 30v1H14v-1z" fill="#E10600"/>
+              <path d="M17 30c0-4.2 3.1-7.4 7-7.4s7 3.2 7 7.4" fill="#FF3B30"/>
+              <ellipse cx="24" cy="31" rx="11" ry="3" fill="#B00000"/>
+              <rect x="13" y="32" width="22" height="5.5" rx="1.5" fill="#3A3A3A"/>
+              <rect x="17" y="37.5" width="14" height="2.8" rx="1" fill="#6D6E71"/>
+            </svg>
+          </span>
+          <span class="prazo-copy">
+            <strong id="alert-45-num">—</strong>
+            <span class="alert-label">em menos de 45 dias</span>
+          </span>
+        </button>
+        <button type="button" id="alert-100" class="prazo prazo-amber" data-alerta="100" aria-pressed="false">
+          <span class="prazo-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 5.5 4.8 40.5a2 2 0 0 0 1.8 3h34.8a2 2 0 0 0 1.8-3L24 5.5z" fill="#FFD400" stroke="#E6B800" stroke-width="1.4" stroke-linejoin="round"/>
+              <path d="M24 18v12" stroke="#1A1A1A" stroke-width="3.2" stroke-linecap="round"/>
+              <circle cx="24" cy="35.5" r="2.1" fill="#1A1A1A"/>
+            </svg>
+          </span>
+          <span class="prazo-copy">
+            <strong id="alert-100-num">—</strong>
+            <span class="alert-label">em menos de 100 dias</span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section class="kpi-money" aria-label="Valores do recorte">
+      <article class="kpi-block">
+        <p class="kpi-label">Valor total</p>
+        <strong id="kpi-valor-cheio" class="kpi-money-value is-green">—</strong>
+      </article>
+      <article class="kpi-block">
+        <p class="kpi-label">Tesouro</p>
+        <strong id="kpi-tesouro" class="kpi-money-value">—</strong>
+      </article>
+      <article class="kpi-block">
+        <p class="kpi-label">Outras fontes</p>
+        <strong id="kpi-outras" class="kpi-money-value">—</strong>
+      </article>
+      <article class="kpi-block">
+        <p class="kpi-label">Empenhado</p>
+        <strong id="kpi-empenhado" class="kpi-money-value">—</strong>
+      </article>
+      <article class="kpi-block">
+        <p class="kpi-label">Saldo</p>
+        <strong id="kpi-saldo-cheio" class="kpi-money-value is-danger">—</strong>
+      </article>
+    </section>
+
+    <section class="chart-grid" aria-label="Gestores, fiscais e vencimentos">
+      <article class="panel chart-card">
+        <header class="card-head">
+          <h2>Gestor por contrato</h2>
+          <p>Quantidade e participação. Clique para filtrar.</p>
+        </header>
+        <div id="box-gestor" class="canvas-box"><canvas id="chart-gestor" aria-label="Barras de contratos por gestor"></canvas></div>
+        <p id="empty-gestor" class="chart-empty" hidden>Nenhum contrato neste recorte.</p>
+      </article>
+      <article class="panel chart-card">
+        <header class="card-head">
+          <h2>Fiscal por contrato</h2>
+          <p>Quem não tem fiscal aparece em âmbar.</p>
+        </header>
+        <div id="box-fiscal" class="canvas-box"><canvas id="chart-fiscal" aria-label="Barras de contratos por fiscal"></canvas></div>
+        <p id="empty-fiscal" class="chart-empty" hidden>Nenhum contrato neste recorte.</p>
+      </article>
+      <article class="panel chart-card">
+        <header class="card-head">
+          <h2>Vencimentos em 12 meses</h2>
+          <p>Vermelho até 45 dias, âmbar até 100 e verde depois.</p>
+        </header>
+        <div id="box-timeline" class="canvas-box tall"><canvas id="chart-timeline" aria-label="Gráfico de vencimentos nos próximos 12 meses"></canvas></div>
+        <p id="empty-timeline" class="chart-empty" hidden>Nenhum vencimento neste horizonte.</p>
+      </article>
+    </section>
+
+    <section class="chart-wide" aria-label="Valor por categoria">
+      <article class="panel chart-card">
+        <header class="card-head">
+          <h2>Valor por categoria</h2>
+          <p>Participação no valor total. As categorias menores entram em Outras. Clique para filtrar.</p>
+        </header>
+        <div id="box-categoria" class="canvas-box tall"><canvas id="chart-categoria" aria-label="Gráfico de valor por categoria"></canvas></div>
+        <p id="empty-categoria" class="chart-empty" hidden>Nenhum contrato neste recorte.</p>
+      </article>
+    </section>
+
+    <section id="tabela" class="panel table-panel" aria-label="Lista de contratos">
+      <div id="active-filters" class="chips" hidden></div>
+      <div class="table-toolbar">
+        <div>
+          <h2>Contratos</h2>
+          <p id="result-count" class="hint" aria-live="polite">Carregando…</p>
+        </div>
+        <div class="toolbar-actions">
+          <div class="meeting" id="meeting">
+            <button type="button" id="btn-meeting" class="btn-run btn-small" aria-pressed="false">Iniciar reunião</button>
+            <span id="meeting-clock" class="meeting-clock">00:00:00</span>
+            <span id="meeting-read" class="meeting-read">0 lidos</span>
+          </div>
+          <label class="page-size">Por página
+            <select id="page-size" aria-label="Contratos por página">
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <button type="button" id="btn-csv" class="btn-ghost btn-small">CSV</button>
+          <button type="button" id="btn-xlsx" class="btn-ghost btn-small">Excel</button>
+          <button type="button" id="btn-print" class="btn-ghost btn-small">Imprimir</button>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="contracts">
+          <caption class="sr-only">Contratos filtrados da Secretaria do Trabalho</caption>
+          <thead><tr id="table-head"></tr></thead>
+          <tbody id="table-body">
+            <tr><td class="loading-cell">Carregando contratos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        <span class="swatch swatch-danger"></span> Borda vermelha: vencido ou menos de 45 dias
+        <span class="swatch swatch-warn"></span> Borda âmbar: menos de 100 dias.
+        Dias negativos aparecem como “vencido há N d”. MAPP, início e modalidade ficam no detalhe do contrato.
+      </p>
+      <nav id="pagination" class="pagination" aria-label="Paginação"></nav>
+    </section>
+    </div>
+
+    <section id="view-ata" class="view-ata" hidden>
+      <div class="panel ata-sheet">
+        <header class="ata-head">
+          <div>
+            <h2>Ata da reunião</h2>
+            <p class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até a gravação no banco.</p>
+          </div>
+          <div class="ata-actions">
+            <button type="button" id="ata-print" class="btn-ghost btn-small">Imprimir ata</button>
+            <button type="button" id="ata-save" class="btn-run btn-small">Salvar ata</button>
+          </div>
+        </header>
+        <p id="ata-login-note" class="banner">O login do SSO deste painel ainda não foi cadastrado. Dá para montar e imprimir a ata; a gravação no banco entra quando houver o client_id.</p>
+        <div class="ata-meta">
+          <label>Título
+            <input id="ata-titulo" type="text" maxlength="160" />
+          </label>
+          <label>Data
+            <input id="ata-data" type="date" />
+          </label>
+          <label>Participantes
+            <input id="ata-participantes" type="text" maxlength="400" placeholder="Nomes separados por vírgula" />
+          </label>
+          <label>Duração
+            <input id="ata-duracao" type="text" readonly />
+          </label>
+        </div>
+        <div class="ata-tools">
+          <button type="button" id="ata-from-checks" class="btn-ghost btn-small">Trazer contratos lidos</button>
+          <label class="ata-search">Incluir contrato
+            <input id="ata-busca" type="search" placeholder="Objeto, NUP, contrato ou contratada" autocomplete="off" />
+          </label>
+        </div>
+        <ul id="ata-sugestoes" class="ata-sugestoes" hidden></ul>
+        <div id="ata-itens" class="ata-itens"></div>
+        <p id="ata-vazio" class="hint">Nenhum objeto na ata. Traga os contratos marcados como lidos ou busque um contrato.</p>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-strip" aria-hidden="true">
+        <span class="strip-green"></span>
+        <span class="strip-blue"></span>
+        <span class="strip-orange"></span>
+      </div>
+      <p>Gestão de Contratos — SET / IDT</p>
+      <p class="footer-note">Fonte: planilha publicada <a id="sheet-link" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vRH1haVymKYDsYJ6iEbMo5Z_IBSvGaN-Ad7FWuMsvCxxW-Ntw3fJjMwfzEDY4FKpLWdV8GfbAP8R4Su/pubhtml" target="_blank" rel="noopener">CONTROLE DE CONTRATOS</a>. Os números mudam quando a planilha é atualizada e o painel é recarregado.</p>
+    </footer>
+  </div>
+
+  <dialog id="modal" class="modal" aria-labelledby="modal-title">
+    <div class="modal-top">
+      <div>
+        <p id="modal-kicker" class="eyebrow">Contrato</p>
+        <h2 id="modal-title">Detalhe</h2>
+        <p id="modal-sub" class="hint"></p>
+      </div>
+      <button type="button" id="modal-close" class="icon-btn" aria-label="Fechar">×</button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+  </dialog>
+
+  <noscript><p class="banner">Este painel precisa de JavaScript para ler a planilha e montar os indicadores.</p></noscript>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/charts.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/ata.js"></script>
+</body>
+</html>
