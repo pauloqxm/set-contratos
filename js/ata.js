@@ -5,12 +5,16 @@ const Ata = (() => {
   let draft = loadDraft();
   let expired = false;
 
+  function localISO(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
   function emptyDraft() {
     const today = new Date();
     return {
       id: null,
       titulo: `Reunião de contratos ${today.toLocaleDateString("pt-BR")}`,
-      data: today.toISOString().slice(0, 10),
+      data: localISO(today),
       responsavel_nome: "",
       participantes: null,
       duracao: "",
@@ -21,7 +25,13 @@ const Ata = (() => {
   function loadDraft() {
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-      if (saved && Array.isArray(saved.itens)) return { ...emptyDraft(), ...saved };
+      if (saved && Array.isArray(saved.itens)) {
+        const draft = { ...emptyDraft(), ...saved };
+        const local = localISO();
+        const utc = new Date().toISOString().slice(0, 10);
+        if (!draft.id && draft.data === utc && utc !== local) draft.data = local;
+        return draft;
+      }
     } catch (error) {
       /* rascunho inválido volta ao vazio */
     }
@@ -140,7 +150,13 @@ const Ata = (() => {
       .toLocaleLowerCase("pt-BR");
   }
 
-  async function renderParticipantes() {
+  function dataBR(iso) {
+    if (!iso || !iso.includes("-")) return iso || "";
+    const [year, month, day] = iso.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  async function renderParticipantes(refreshed) {
     const host = document.getElementById("ata-participantes-lista");
     const nota = document.getElementById("ata-participantes-nota");
     let people = Frequencia.presentes(draft.data);
@@ -158,7 +174,16 @@ const Ata = (() => {
     }
     if (!people) {
       nota.textContent = Frequencia.erro() || "Não foi possível ler a lista de presença.";
+      document.getElementById("ata-presenca-recente").hidden = true;
       return;
+    }
+    if (!people.length && !refreshed && !Frequencia.erro()) {
+      try {
+        await Frequencia.load(true);
+      } catch (err) {
+        /* a nota mostra o resultado abaixo */
+      }
+      return renderParticipantes(true);
     }
     if (!draft.id && draft.participantes == null && people.length) {
       draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
@@ -169,11 +194,18 @@ const Ata = (() => {
     const extras = salvos.filter((nome) => !chaves.has(chaveNome(nome)));
     const marcados = new Set(salvos.map(chaveNome));
     const opcoes = people.map((pessoa) => pessoa.nome).concat(extras);
+    const recente = document.getElementById("ata-presenca-recente");
     if (!opcoes.length) {
       host.innerHTML = "";
-      nota.textContent = "Nenhuma presença registrada nesta data.";
+      const ultima = Frequencia.ultimaData();
+      recente.hidden = !ultima || ultima === draft.data;
+      recente.textContent = ultima ? `Usar a presença de ${dataBR(ultima)}` : "Usar a presença mais recente";
+      nota.textContent = ultima && ultima !== draft.data
+        ? `Nenhuma presença em ${dataBR(draft.data)}. A mais recente na planilha é ${dataBR(ultima)}.`
+        : "Nenhuma presença registrada nesta data.";
       return;
     }
+    recente.hidden = true;
     nota.textContent = "Quem confirmou presença na data da ata. Desmarque quem não entra na ata.";
     host.innerHTML = opcoes
       .map((nome) => {
@@ -365,6 +397,72 @@ const Ata = (() => {
     }
   }
 
+  function xml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function paragrafo(texto, negrito) {
+    const marca = negrito ? "<w:b/>" : "";
+    return `<w:p><w:r><w:rPr>${marca}<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">${xml(texto)}</w:t></w:r></w:p>`;
+  }
+
+  async function baixarDocx() {
+    readMeta();
+    if (typeof JSZip === "undefined") {
+      note("Não foi possível gerar o arquivo Word.", true);
+      return;
+    }
+    const blocos = [
+      paragrafo("Ata da reunião", true),
+      paragrafo(draft.titulo || "Reunião de contratos"),
+      paragrafo(`Data: ${dataBR(draft.data)}`),
+      paragrafo(`Responsável: ${draft.responsavel_nome || "—"}`),
+      paragrafo(`Duração: ${currentDuration() || draft.duracao || "—"}`),
+      paragrafo(`Participantes: ${nomesSalvos().join(", ") || "—"}`),
+      paragrafo(""),
+    ];
+    draft.itens.forEach((item, index) => {
+      const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
+      blocos.push(paragrafo(`${index + 1}. ${item.objeto || "Contrato"}`, true));
+      if (meta) blocos.push(paragrafo(meta));
+      if (item.tempo) blocos.push(paragrafo(`Tempo: ${item.tempo}`));
+      String(item.texto || "Sem registro.")
+        .split(/\n/)
+        .forEach((linha) => blocos.push(paragrafo(linha)));
+      blocos.push(paragrafo(""));
+    });
+    if (!draft.itens.length) blocos.push(paragrafo("Nenhum objeto nesta ata."));
+    const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>${blocos.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body>
+</w:document>`;
+    const zip = new JSZip();
+    zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+    zip.folder("_rels").file(".rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+    zip.folder("word").file("document.xml", documento);
+    const blob = await zip.generateAsync({
+      type: "blob",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    const link = document.createElement("a");
+    const nome = `ata-${draft.data || "reuniao"}.docx`;
+    link.href = URL.createObjectURL(blob);
+    link.download = nome;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   async function boot() {
     if (!(await SSO.exigirLogin())) return;
     document.getElementById("menu-toggle").addEventListener("click", () => toggleMenu());
@@ -399,6 +497,13 @@ const Ata = (() => {
       renderParticipantes();
     });
     document.getElementById("ata-participantes-lista").addEventListener("change", readMeta);
+    document.getElementById("ata-presenca-recente").addEventListener("click", () => {
+      const data = Frequencia.ultimaData();
+      if (!data) return;
+      const input = document.getElementById("ata-data");
+      input.value = data;
+      input.dispatchEvent(new Event("change"));
+    });
 
     document.getElementById("ata-from-checks").addEventListener("click", () => {
       const added = bringChecks();
@@ -455,6 +560,7 @@ const Ata = (() => {
       document.body.classList.add("printing-ata");
       window.print();
     });
+    document.getElementById("ata-docx").addEventListener("click", baixarDocx);
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
 
     document.getElementById("ata-save").addEventListener("click", save);

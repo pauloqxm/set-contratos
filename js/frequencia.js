@@ -426,5 +426,10 @@ const Frequencia = (() => {
   }
 
   document.addEventListener("DOMContentLoaded", boot);
-  return { show, load, presentes, erro: () => error };
+  function ultimaData() {
+    const lista = datas();
+    return lista.length ? lista[0][0] : "";
+  }
+
+  return { show, load, presentes, ultimaData, erro: () => error };
 })();

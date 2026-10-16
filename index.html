@@ -365,6 +365,7 @@
           <div class="ata-actions">
             <button type="button" id="ata-new" class="btn-ghost btn-small">Nova ata</button>
             <button type="button" id="ata-print" class="btn-ghost btn-small">Imprimir ata</button>
+            <button type="button" id="ata-docx" class="btn-ghost btn-small">Baixar Word</button>
             <button type="button" id="ata-save" class="btn-run btn-small">Salvar ata</button>
           </div>
         </header>
@@ -390,6 +391,7 @@
         <fieldset class="ata-participantes">
           <legend>Participantes</legend>
           <p id="ata-participantes-nota" class="hint">Quem confirmou presença na data da ata.</p>
+          <button type="button" id="ata-presenca-recente" class="btn-ghost btn-small" hidden>Usar a presença mais recente</button>
           <div id="ata-participantes-lista" class="freq-checks"></div>
         </fieldset>
         <div class="ata-tools">
@@ -505,6 +507,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.1.0/dist/browser/oidc-client-ts.min.js"></script>
   <script defer src="js/config.js"></script>
   <script defer src="js/sso.js"></script>

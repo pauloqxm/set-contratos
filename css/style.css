@@ -359,6 +359,8 @@ h1 {
   background: var(--teal-soft);
 }
 
+#ata-presenca-recente { margin-top: 8px; }
+
 .ata-participantes legend {
   padding: 0 6px;
   font-size: 0.75rem;
