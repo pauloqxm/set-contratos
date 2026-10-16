@@ -177,7 +177,11 @@ h1 {
 
 .btn-ghost:hover { border-color: var(--menu-accent); color: var(--menu-accent); }
 
-.btn-run:disabled, .btn-ghost:disabled { opacity: 0.55; cursor: default; transform: none; }
+.btn-danger { background: var(--danger-soft); border-color: #e3b2ae; color: var(--danger); }
+
+.btn-danger:hover { background: var(--danger); color: var(--white); }
+
+.btn-run:disabled, .btn-ghost:disabled, .btn-danger:disabled { opacity: 0.55; cursor: default; transform: none; }
 
 .banner {
   margin-top: 16px;
@@ -310,7 +314,25 @@ h1 {
 
 .ata-head h2 { margin: 0; }
 
-.ata-actions, .ata-tools { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.ata-actions, .ata-tools, .ata-editor { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+
+.ata-editor {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+}
+
+.ata-editor .hint { flex: 1 1 100%; margin: 0; }
+
+.ata-editor label { min-width: 220px; }
+
+.ata-meta input:disabled, .ata-item textarea:disabled {
+  background: #f4f5f5;
+  color: var(--ink);
+  cursor: default;
+}
 
 .ata-meta {
   display: grid;
@@ -319,7 +341,7 @@ h1 {
   margin-top: 14px;
 }
 
-.ata-meta label, .ata-search {
+.ata-meta label, .ata-search, .ata-editor label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -330,7 +352,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .freq-bar select, .freq-bar input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .ata-editor input, .freq-bar select, .freq-bar input, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -1695,6 +1717,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-salvas,
   body.printing-ata .ata-item .linkish,
   body.printing-ata #ata-presenca-recente,
+  body.printing-ata #ata-editor,
   body.printing-ata .ata-meta input,
   body.printing-ata .ata-item textarea { display: none !important; }
   body.printing-ata,

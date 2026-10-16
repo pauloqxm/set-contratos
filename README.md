@@ -60,11 +60,13 @@ O **Responsável** da ata é um campo de texto livre. Em ata nova, o site sugere
 
 Os **participantes** vêm da aba **Frequência**: na data da ata, a lista é quem confirmou presença na planilha do Comitê Executivo. Dá para desmarcar nomes antes de salvar.
 
+Ata nova pode ser salva por quem está logado. Alterar os campos de uma ata já salva, ou excluí-la, pede o token da variável `ATA_EDITOR_TOKEN` no serviço do Railway. O valor não entra neste repositório: em **Variables** do serviço, crie `ATA_EDITOR_TOKEN` com um texto longo e salve (o Railway publica de novo). Quem tem o token informa na própria ata; ele vale só naquela sessão do navegador.
+
 ## Frequência
 
 A aba **Frequência** lê a planilha publicada de presença (`frequenciaCsvUrl` em [`js/config.js`](js/config.js)). O filtro escolhe a data da reunião e mostra o total e os nomes, sem repetir quem registrou mais de uma vez no mesmo dia. No topo, os indicadores dos últimos 30 dias: quantas reuniões houve, a média de pessoas por reunião e quantas pessoas diferentes apareceram. O gráfico mostra o total de participantes nas últimas sete reuniões. Em **Presença por pessoa**, um nome lista as reuniões dos últimos 60 dias; as datas **De** e **Até** trocam esse período.
 
-No Supabase, uma vez (e de novo sempre que estes arquivos mudarem):
+No Supabase, uma vez (e de novo quando o SQL ou a função da ata mudarem):
 
 1. **SQL Editor**: rode [`supabase/ata.sql`](supabase/ata.sql). Ele cria `ata_reunioes` e `ata_itens` (e colunas do responsável), fechadas para a chave publicável. Rodar de novo não apaga atas.
 2. **Edge Functions**: publique [`supabase/functions/ata/index.ts`](supabase/functions/ata/index.ts) com o nome `ata` e a verificação de JWT **desligada**. Quem confere o acesso é o token do SSO. Pela CLI:

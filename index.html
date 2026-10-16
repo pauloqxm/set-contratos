@@ -371,6 +371,14 @@
           </div>
         </header>
         <p id="ata-login-note" class="banner" role="status" hidden></p>
+        <div id="ata-editor" class="ata-editor" hidden>
+          <p id="ata-editor-nota" class="hint">Ata salva. O token libera alterar os campos e excluir.</p>
+          <label id="ata-token-campo">Token de edição
+            <input id="ata-token" type="password" autocomplete="off" />
+          </label>
+          <button type="button" id="ata-token-ok" class="btn-ghost btn-small">Liberar edição</button>
+          <button type="button" id="ata-delete" class="btn-danger btn-small" hidden>Excluir ata</button>
+        </div>
         <details id="ata-salvas" class="ata-salvas">
           <summary>Atas salvas</summary>
           <ul id="ata-lista" class="ata-lista"></ul>

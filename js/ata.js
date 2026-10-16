@@ -2,6 +2,7 @@
 const Ata = (() => {
   const storageKey = "set-ata-rascunho";
   const returnKey = "set-ata-voltar";
+  const tokenKey = "set-ata-token";
   let draft = loadDraft();
   let expired = false;
 
@@ -73,6 +74,7 @@ const Ata = (() => {
           "x-sso-token": SSO.user().id_token,
           "x-sso-name": who.name,
           "x-sso-email": who.email,
+          ...(sessionStorage.getItem(tokenKey) ? { "x-ata-token": sessionStorage.getItem(tokenKey) } : {}),
           ...(body ? { "Content-Type": "application/json" } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -85,6 +87,11 @@ const Ata = (() => {
       if (!retried && (await SSO.renovar())) return api(method, params, body, true);
       expired = true;
       throw new Error("O login expirou. Clique em Salvar ata para entrar de novo; o rascunho fica guardado.");
+    }
+    if (response.status === 403) {
+      sessionStorage.removeItem(tokenKey);
+      aplicarTrava();
+      throw new Error(data.erro || "O token de edição não confere.");
     }
     if (!response.ok) throw new Error(data.erro || `O banco respondeu com erro ${response.status}.`);
     return data;
@@ -177,6 +184,7 @@ const Ata = (() => {
     if (!people) {
       nota.textContent = Frequencia.erro() || "Não foi possível ler a lista de presença.";
       document.getElementById("ata-presenca-recente").hidden = true;
+      aplicarTrava();
       return;
     }
     if (!people.length && !refreshed && !Frequencia.erro()) {
@@ -205,6 +213,7 @@ const Ata = (() => {
       nota.textContent = ultima && ultima !== draft.data
         ? `Nenhuma presença em ${dataBR(draft.data)}. A mais recente na planilha é ${dataBR(ultima)}.`
         : "Nenhuma presença registrada nesta data.";
+      aplicarTrava();
       return;
     }
     recente.hidden = true;
@@ -215,6 +224,36 @@ const Ata = (() => {
         return `<label class="freq-check"><input type="checkbox" value="${esc(nome)}"${on} /> ${esc(nome)}<span class="freq-virgula" aria-hidden="true">,</span></label>`;
       })
       .join("");
+    aplicarTrava();
+  }
+
+  function temToken() {
+    return Boolean(sessionStorage.getItem(tokenKey));
+  }
+
+  function travada() {
+    return Boolean(draft.id) && !temToken();
+  }
+
+  function aplicarTrava() {
+    const bar = document.getElementById("ata-editor");
+    if (!bar) return;
+    const salva = Boolean(draft.id);
+    const trava = travada();
+    bar.hidden = !salva;
+    document.getElementById("ata-token-campo").hidden = !trava;
+    document.getElementById("ata-token-ok").hidden = !trava;
+    document.getElementById("ata-delete").hidden = !salva || trava;
+    document.getElementById("ata-editor-nota").textContent = trava
+      ? "Ata salva. O token libera alterar os campos e excluir."
+      : "Edição liberada nesta sessão.";
+    ["ata-titulo", "ata-data", "ata-responsavel", "ata-save", "ata-from-checks", "ata-busca"].forEach((id) => {
+      const field = document.getElementById(id);
+      if (field) field.disabled = trava;
+    });
+    document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens button, #ata-presenca-recente").forEach((field) => {
+      field.disabled = trava;
+    });
   }
 
   function readParticipantes() {
@@ -262,6 +301,7 @@ const Ata = (() => {
     document.getElementById("ata-duracao").value = currentDuration() || "Reunião não iniciada";
     fillHorarios();
     renderParticipantes();
+    aplicarTrava();
   }
 
   function readMeta() {
@@ -325,6 +365,7 @@ const Ata = (() => {
         </article>`;
       })
       .join("");
+    aplicarTrava();
   }
 
   function suggestions(query) {
@@ -399,6 +440,11 @@ const Ata = (() => {
       note("Informe o responsável pela ata.", true);
       return;
     }
+    if (draft.id && !temToken()) {
+      aplicarTrava();
+      note("Para alterar uma ata salva, informe o token de edição.", true);
+      return;
+    }
     const button = document.getElementById("ata-save");
     button.disabled = true;
     draft.duracao = currentDuration() || "";
@@ -419,12 +465,59 @@ const Ata = (() => {
       });
       draft.id = id;
       saveDraft();
-      note(`Ata salva às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`);
+      const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      note(temToken() ? `Ata salva às ${hora}.` : `Ata salva às ${hora}. Para alterar ou excluir, informe o token de edição.`);
       loadList();
     } catch (error) {
       note(error.message, true);
     } finally {
-      button.disabled = false;
+      aplicarTrava();
+    }
+  }
+
+  async function liberarEdicao() {
+    const token = document.getElementById("ata-token").value.trim();
+    if (!token) {
+      note("Informe o token de edição.", true);
+      return;
+    }
+    let response;
+    try {
+      response = await fetch("/api/validar-token", {
+        method: "POST",
+        headers: { "x-ata-token": token },
+      });
+    } catch (error) {
+      note("Não foi possível confirmar o token de edição.", true);
+      return;
+    }
+    if (!response.ok) {
+      note(response.status === 404 ? "O token de edição só funciona no site publicado." : "O token de edição não confere.", true);
+      return;
+    }
+    sessionStorage.setItem(tokenKey, token);
+    document.getElementById("ata-token").value = "";
+    aplicarTrava();
+    note("Edição de atas salvas liberada nesta sessão.");
+  }
+
+  async function excluir() {
+    if (!draft.id || !temToken()) return;
+    if (!window.confirm("Excluir esta ata salva? Essa ação não desfaz.")) return;
+    const button = document.getElementById("ata-delete");
+    button.disabled = true;
+    try {
+      await api("DELETE", { id: draft.id });
+      draft = emptyDraft();
+      saveDraft();
+      fillMeta();
+      renderItems();
+      loadList();
+      note("Ata excluída.");
+    } catch (error) {
+      note(error.message, true);
+    } finally {
+      aplicarTrava();
     }
   }
 
@@ -670,6 +763,11 @@ const Ata = (() => {
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
 
     document.getElementById("ata-save").addEventListener("click", save);
+    document.getElementById("ata-token-ok").addEventListener("click", liberarEdicao);
+    document.getElementById("ata-token").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") liberarEdicao();
+    });
+    document.getElementById("ata-delete").addEventListener("click", excluir);
 
     const vista = sessionStorage.getItem("set-vista");
     sessionStorage.removeItem("set-vista");

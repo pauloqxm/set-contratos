@@ -18,8 +18,8 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "apikey, authorization, content-type, x-sso-token, x-sso-name, x-sso-email",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "apikey, authorization, content-type, x-sso-token, x-sso-name, x-sso-email, x-ata-token",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     Vary: "Origin",
   };
   if (ORIGINS.includes(origin)) headers["Access-Control-Allow-Origin"] = origin;
@@ -31,6 +31,25 @@ function json(req: Request, status: number, body: unknown): Response {
     status,
     headers: { ...cors(req), "Content-Type": "application/json; charset=utf-8" },
   });
+}
+
+async function exigirToken(req: Request): Promise<string | null> {
+  const token = (req.headers.get("x-ata-token") ?? "").trim();
+  if (!token) return "Para alterar ou excluir uma ata salva, informe o token de edição.";
+  const url = Deno.env.get("ATA_TOKEN_URL") ?? "https://set-contratos.up.railway.app/api/validar-token";
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "x-ata-token": token },
+      redirect: "manual",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (response.status === 204) return null;
+    if (response.status === 403) return "O token de edição não confere.";
+  } catch {
+    /* o site que guarda o token não respondeu */
+  }
+  return "Não foi possível confirmar o token de edição.";
 }
 
 async function usuario(req: Request): Promise<{ sub: string; nome: string } | null> {
@@ -77,6 +96,16 @@ Deno.serve(async (req) => {
     return json(req, 200, { ata: { ...ata, itens } });
   }
 
+  if (req.method === "DELETE") {
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) return json(req, 400, { erro: "Informe a ata que será excluída." });
+    const recusa = await exigirToken(req);
+    if (recusa) return json(req, 403, { erro: recusa });
+    const { error } = await db.from("ata_reunioes").delete().eq("id", id);
+    if (error) return json(req, 500, { erro: error.message });
+    return json(req, 200, { ok: true });
+  }
+
   if (req.method === "POST") {
     let body: Record<string, unknown>;
     try {
@@ -86,6 +115,10 @@ Deno.serve(async (req) => {
     }
     if (!body.titulo || !body.data || !Array.isArray(body.itens)) {
       return json(req, 400, { erro: "Informe título, data e os objetos da ata." });
+    }
+    if (body.id) {
+      const recusa = await exigirToken(req);
+      if (recusa) return json(req, 403, { erro: recusa });
     }
     const { data, error } = await db.rpc("ata_salvar", {
       p_ata: body,
