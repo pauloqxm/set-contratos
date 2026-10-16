@@ -39,7 +39,9 @@ A planilha precisa continuar publicada na web. O painel busca o CSV a cada carre
 
 ## Acesso pelo SSO
 
-O site inteiro (abas **Painel**, **Ata** e **Frequência**) só abre depois do login no SSO (`https://sso.idt.org.br`, aplicação `set_contratos`). Quem não tem sessão vai para a tela do SSO; quem não tem acesso vê um aviso. O botão **Sair** fica na barra superior. Sem teclado nem mouse por 30 minutos, a sessão local encerra e é preciso entrar de novo. O rascunho da ata continua neste navegador.
+O site inteiro (abas **Painel**, **Ata** e **Frequência**) só abre depois do login no SSO (`https://sso.idt.org.br`, aplicação `set_contratos`). Quem não tem sessão vai para a tela do SSO; quem não tem acesso vê um aviso. O botão **Sair** fica na barra superior.
+
+Enquanto houver teclado, mouse ou toque, o site renova o token do SSO e a sessão continua. Ela só encerra depois de **30 minutos** sem essa atividade. O rascunho da ata continua neste navegador. No `/admin` do SSO, a aplicação `set_contratos` precisa ter o escopo **offline_access** liberado; sem ele o token não renova e o próximo login pode falhar.
 
 O site não tem servidor, então o login é feito no navegador, sem segredo. No `/admin` do SSO, a aplicação `set_contratos` precisa estar como:
 

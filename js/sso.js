@@ -2,6 +2,7 @@
 const SSO = (() => {
   const base = `${location.origin}/`;
   const sso = CONFIG.ssoAuthority;
+  const inFrame = window.self !== window.top;
   const manager = window.oidc && CONFIG.ssoClientId
     ? new oidc.UserManager({
         authority: sso,
@@ -16,13 +17,18 @@ const SSO = (() => {
         },
         client_id: CONFIG.ssoClientId,
         redirect_uri: base,
+        silent_redirect_uri: base,
         post_logout_redirect_uri: base,
         response_type: "code",
-        scope: "openid profile email",
+        scope: "openid profile email offline_access",
         loadUserInfo: true,
+        automaticSilentRenew: !inFrame,
         userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
       })
     : null;
+  if (inFrame && manager) {
+    manager.signinSilentCallback().catch(() => {});
+  }
   let current = null;
   let pending = null;
   let forceLogin = false;
@@ -68,10 +74,28 @@ const SSO = (() => {
     return user;
   }
 
+  function ativo() {
+    return !sessionStorage.getItem(idleKey) || idleAge() < idleMs;
+  }
+
   function admit() {
     document.getElementById("sso-user").textContent = displayName();
     document.body.classList.add("is-authed");
     watchIdle();
+  }
+
+  /** Troca o token vencido se a pessoa ainda está usando o painel. */
+  async function renovar() {
+    if (!manager || !ativo()) return false;
+    try {
+      current = await enrich(await manager.signinSilent());
+      return Boolean(current && !current.expired);
+    } catch (error) {
+      if (!ativo() || forceLogin) return false;
+      if (!document.getElementById("view-ata").hidden) sessionStorage.setItem("set-ata-voltar", "1");
+      login();
+      return false;
+    }
   }
 
   function idleAge() {
@@ -169,20 +193,28 @@ const SSO = (() => {
         } else if (error instanceof TypeError || /fetch|network/i.test(String(error && error.message))) {
           refused();
         } else {
-          gate("Não foi possível concluir o login. Tente de novo.", true);
+          const detail = error && (error.error_description || error.message);
+          gate(detail ? `Não foi possível concluir o login. ${detail}` : "Não foi possível concluir o login. Tente de novo.", true);
         }
         return null;
       }
     } else {
       current = await enrich(await manager.getUser());
-      if (!current || current.expired) return login();
-      if (sessionStorage.getItem(idleKey) && idleAge() >= idleMs) {
+      if (sessionStorage.getItem(idleKey) && !ativo()) {
         await manager.removeUser();
         current = null;
         forceLogin = true;
         gate("A sessão encerrou após 30 minutos sem atividade no teclado ou no mouse.", true);
         return null;
       }
+      if (current?.expired && ativo()) {
+        try {
+          current = await enrich(await manager.signinSilent());
+        } catch (error) {
+          return login();
+        }
+      }
+      if (!current || current.expired) return login();
     }
     admit();
     return current;
@@ -190,6 +222,7 @@ const SSO = (() => {
 
   /** Garante login. Devolve o usuário, ou null se foi para o SSO ou não tem acesso. */
   function exigirLogin() {
+    if (inFrame) return Promise.resolve(null);
     if (!pending) pending = run();
     return pending;
   }
@@ -218,10 +251,15 @@ const SSO = (() => {
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible" || !idleOn) return;
-      if (idleAge() >= idleMs) idleOut();
+      if (!ativo()) idleOut();
       else armIdle();
     });
+    if (manager) {
+      manager.events.addUserLoaded((user) => {
+        current = user;
+      });
+    }
   });
 
-  return { exigirLogin, login, sair, user, displayName };
+  return { exigirLogin, login, sair, renovar, user, displayName };
 })();

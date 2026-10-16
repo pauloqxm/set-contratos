@@ -48,7 +48,7 @@ const Ata = (() => {
     };
   }
 
-  async function api(method, params, body) {
+  async function api(method, params, body, retried) {
     const url = new URL(`${CONFIG.supabaseUrl}/functions/v1/${CONFIG.ataFunction}`);
     Object.entries(params || {}).forEach(([key, value]) => url.searchParams.set(key, value));
     const who = profile();
@@ -70,6 +70,7 @@ const Ata = (() => {
     }
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
+      if (!retried && (await SSO.renovar())) return api(method, params, body, true);
       expired = true;
       throw new Error("O login expirou. Clique em Salvar ata para entrar de novo; o rascunho fica guardado.");
     }
