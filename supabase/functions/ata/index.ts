@@ -52,16 +52,27 @@ async function exigirToken(req: Request): Promise<string | null> {
   return "Não foi possível confirmar o token de edição.";
 }
 
-async function usuario(req: Request): Promise<{ sub: string; nome: string } | null> {
+function audiencia(valor: unknown): string[] {
+  if (Array.isArray(valor)) return valor.map(String);
+  return valor ? [String(valor)] : [];
+}
+
+async function usuario(req: Request): Promise<{ sub: string; nome: string } | { erro: string }> {
   const token = req.headers.get("x-sso-token") ?? "";
-  if (!token) return null;
+  if (!token) return { erro: "A ata não recebeu o login do SSO." };
   try {
-    const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, audience: CLIENT_ID });
+    const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, clockTolerance: 60 });
+    const auds = audiencia(payload.aud);
+    const azp = String(payload.azp || payload.client_id || "");
+    if (!auds.includes(CLIENT_ID) && azp !== CLIENT_ID) {
+      return { erro: "O login do SSO não é desta aplicação." };
+    }
     const email = String(payload.email || req.headers.get("x-sso-email") || "").trim();
     const nome = String(payload.name || req.headers.get("x-sso-name") || email).trim();
     return { sub: String(payload.sub), nome };
-  } catch {
-    return null;
+  } catch (error) {
+    const detalhe = error instanceof Error ? error.message : "token recusado";
+    return { erro: `O login do SSO foi recusado (${detalhe}).` };
   }
 }
 
@@ -69,7 +80,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
 
   const user = await usuario(req);
-  if (!user) return json(req, 401, { erro: "Entre pelo SSO para usar a ata." });
+  if ("erro" in user) return json(req, 401, { erro: user.erro });
 
   if (req.method === "GET") {
     const id = new URL(req.url).searchParams.get("id");

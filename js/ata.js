@@ -87,9 +87,8 @@ const Ata = (() => {
     }
     const data = await response.json().catch(() => ({}));
     if (response.status === 401) {
-      if (!retried && (await SSO.renovar())) return api(method, params, body, true);
       expired = true;
-      throw new Error("O login expirou. Clique em Salvar ata para entrar de novo; o rascunho fica guardado.");
+      throw new Error(data.erro || "O acesso à ata foi recusado. Saia e entre de novo.");
     }
     if (response.status === 403) {
       sessionStorage.removeItem(tokenKey);
