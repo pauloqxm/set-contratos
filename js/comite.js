@@ -193,16 +193,19 @@ const Comite = (() => {
         </table></div>`
       : '<p class="hint">Nenhum item em aberto.</p>';
     const recolhido = recolhidos.has(projeto.id);
+    const rotulo = recolhido ? "Mostrar itens" : "Recolher itens";
     return `<article class="panel comite-card${marcado ? " is-read" : ""}${recolhido ? " is-collapsed" : ""}" data-id="${esc(projeto.id)}">
       <header class="comite-card-head">
-        <label class="read-check" title="Marcar como discutido na reunião">
-          <input type="checkbox" class="js-comite-check" data-id="${esc(projeto.id)}" ${marcado ? "checked" : ""} aria-label="Marcar ${esc(projeto.nome)} como discutido" />
-          <span class="read-time">${esc(tempo)}</span>
-        </label>
+        <div class="comite-lead">
+          <label class="read-check" title="Marcar como discutido na reunião">
+            <input type="checkbox" class="js-comite-check" data-id="${esc(projeto.id)}" ${marcado ? "checked" : ""} aria-label="Marcar ${esc(projeto.nome)} como discutido" />
+            <span class="read-time">${esc(tempo)}</span>
+          </label>
+          <button type="button" class="comite-toggle" data-toggle="${esc(projeto.id)}" aria-expanded="${recolhido ? "false" : "true"}" title="${rotulo}" aria-label="${rotulo}">${recolhido ? "▸" : "▾"}</button>
+        </div>
         <div class="comite-card-title">
           <h3>${esc(projeto.nome)}</h3>
           ${projeto.descricao ? `<p class="hint">${esc(projeto.descricao)}</p>` : ""}
-          <button type="button" class="comite-toggle" data-toggle="${esc(projeto.id)}" aria-expanded="${recolhido ? "false" : "true"}">${recolhido ? "Mostrar itens" : "Recolher itens"}</button>
         </div>
         <div class="comite-resumo">
           ${prazo ? `<span class="hint">${esc(prazo)}</span>` : ""}
@@ -248,7 +251,10 @@ const Comite = (() => {
     card.classList.toggle("is-collapsed", fechado);
     const button = card.querySelector(".comite-toggle");
     if (button) {
-      button.textContent = fechado ? "Mostrar itens" : "Recolher itens";
+      const rotulo = fechado ? "Mostrar itens" : "Recolher itens";
+      button.textContent = fechado ? "▸" : "▾";
+      button.title = rotulo;
+      button.setAttribute("aria-label", rotulo);
       button.setAttribute("aria-expanded", fechado ? "false" : "true");
     }
     pintarRecolher();
@@ -288,7 +294,11 @@ const Comite = (() => {
     carregando = (async () => {
       try {
         const data = await Ata.api("GET", { pauta: "comite" });
+        const conhecidos = new Set(projetos.map((projeto) => projeto.id));
         projetos = Array.isArray(data.projetos) ? data.projetos : [];
+        projetos.forEach((projeto) => {
+          if (!conhecidos.has(projeto.id)) recolhidos.add(projeto.id);
+        });
         carregado = true;
         preencherFiltro();
         note("");

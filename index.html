@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=13" />
+  <link rel="stylesheet" href="css/style.css?v=14" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -39,11 +39,11 @@
         <button type="button" id="menu-toggle" class="menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="menu-list">
           <span class="menu-icon" aria-hidden="true"></span>
           Menu
-          <span id="menu-current" class="menu-current">Painel</span>
+          <span id="menu-current" class="menu-current">Gestão de Contratos</span>
         </button>
         <div id="menu-list" class="menu-list" hidden>
           <button type="button" class="view-tab is-on" data-view="painel" aria-current="page">
-            <strong>Painel</strong>
+            <strong>Gestão de Contratos</strong>
             <span>Indicadores, gráficos e tabela dos contratos</span>
           </button>
           <button type="button" class="view-tab" data-view="comite">
@@ -361,29 +361,26 @@
     </div>
 
     <section id="view-comite" class="view-comite" hidden>
-      <div class="panel comite-head">
-        <div>
-          <h2>Comitê Executivo</h2>
-          <p class="hint">Pauta semanal: cada projeto ativo é um ponto, com os itens ainda em aberto.</p>
-          <p id="comite-count" class="hint" aria-live="polite"></p>
-        </div>
-        <div class="toolbar-actions">
-          <div class="meeting" id="comite-meeting">
-            <button type="button" id="comite-start" class="btn-run btn-small" aria-pressed="false">Iniciar reunião</button>
-            <button type="button" id="comite-end" class="btn-ghost btn-small" hidden>Encerrar reunião</button>
-            <span id="comite-clock" class="meeting-clock">00:00:00</span>
-            <span id="comite-read" class="meeting-read">0 discutidos</span>
-          </div>
-          <button type="button" id="comite-refresh" class="btn-ghost btn-small">Atualizar pauta</button>
-        </div>
-      </div>
+      <header class="comite-banner">
+        <p class="comite-banner-kicker">SET / IDT · Secretaria do Trabalho</p>
+        <h2>Pauta do Comitê Executivo</h2>
+        <p class="comite-banner-lead">Cada projeto ativo é um ponto da pauta semanal, com os itens ainda em aberto.</p>
+        <p id="comite-count" class="comite-banner-meta" aria-live="polite"></p>
+      </header>
       <div class="comite-bar">
         <label class="ata-search">Projeto
           <select id="comite-filtro" aria-label="Filtrar projetos da pauta">
             <option value="">Todos os projetos</option>
           </select>
         </label>
-        <button type="button" id="comite-recolher" class="btn-ghost btn-small">Recolher itens</button>
+        <div class="meeting" id="comite-meeting">
+          <button type="button" id="comite-start" class="btn-run btn-small" aria-pressed="false">Iniciar reunião</button>
+          <button type="button" id="comite-end" class="btn-ghost btn-small" hidden>Encerrar reunião</button>
+          <span id="comite-clock" class="meeting-clock">00:00:00</span>
+          <span id="comite-read" class="meeting-read">0 discutidos</span>
+        </div>
+        <button type="button" id="comite-recolher" class="btn-ghost btn-small">Mostrar itens</button>
+        <button type="button" id="comite-refresh" class="btn-ghost btn-small">Atualizar pauta</button>
       </div>
       <p id="comite-note" class="banner" role="status" hidden></p>
       <div id="comite-pauta" class="comite-pauta"></div>
@@ -590,7 +587,7 @@
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/frequencia.js"></script>
-  <script defer src="js/comite.js?v=3"></script>
+  <script defer src="js/comite.js?v=4"></script>
   <script defer src="js/ata.js?v=11"></script>
 </body>
 </html>
