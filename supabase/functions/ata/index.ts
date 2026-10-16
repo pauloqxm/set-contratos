@@ -4,7 +4,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 
 const ISSUER = "https://sso.idt.org.br/";
-const CLIENT_ID = Deno.env.get("SSO_CLIENT_ID") ?? "set_contratos";
+const CLIENT_IDS = (Deno.env.get("SSO_CLIENT_ID") ?? "set_contratos,set_contratos_2")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
 const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://set-contratos.up.railway.app,http://127.0.0.1:8080,http://localhost:8080")
   .split(",")
   .map((origin) => origin.trim().replace(/\/$/, ""))
@@ -64,8 +67,9 @@ async function usuario(req: Request): Promise<{ sub: string; nome: string } | { 
     const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, clockTolerance: 60 });
     const auds = audiencia(payload.aud);
     const azp = String(payload.azp || payload.client_id || "");
-    if (!auds.includes(CLIENT_ID) && azp !== CLIENT_ID) {
-      return { erro: "O login do SSO não é desta aplicação." };
+    if (!CLIENT_IDS.some((id) => auds.includes(id) || azp === id)) {
+      const recebido = [...new Set([...auds, azp].filter(Boolean))].join(", ") || "vazio";
+      return { erro: `O login do SSO não é desta aplicação (recebido: ${recebido}).` };
     }
     const email = String(payload.email || req.headers.get("x-sso-email") || "").trim();
     const nome = String(payload.name || req.headers.get("x-sso-name") || email).trim();
