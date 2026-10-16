@@ -298,6 +298,7 @@ const Ata = (() => {
           </header>
           <label class="sr-only" for="ata-texto-${index}">O que foi falado</label>
           <textarea id="ata-texto-${index}" data-texto="${index}" placeholder="O que foi falado sobre este objeto">${esc(item.texto)}</textarea>
+          <div class="ata-texto-print">${esc(item.texto)}</div>
         </article>`;
       })
       .join("");
@@ -404,9 +405,38 @@ const Ata = (() => {
       .replace(/>/g, "&gt;");
   }
 
-  function paragrafo(texto, negrito) {
-    const marca = negrito ? "<w:b/>" : "";
-    return `<w:p><w:r><w:rPr>${marca}<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">${xml(texto)}</w:t></w:r></w:p>`;
+  function paragrafo(texto, opcoes = {}) {
+    const negrito = opcoes.negrito ? "<w:b/>" : "";
+    const cor = opcoes.cor ? `<w:color w:val="${opcoes.cor}"/>` : "";
+    const tamanho = opcoes.tamanho || "22";
+    const depois = opcoes.depois == null ? "40" : opcoes.depois;
+    return `<w:p><w:pPr><w:spacing w:before="0" w:after="${depois}"/></w:pPr><w:r><w:rPr>${negrito}${cor}<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="${tamanho}"/></w:rPr><w:t xml:space="preserve">${xml(texto)}</w:t></w:r></w:p>`;
+  }
+
+  function celula(conteudo, fill, borda, span, largura) {
+    const fundo = fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : "";
+    const cor = borda || "C8CACB";
+    const lado = ["top", "left", "bottom", "right"]
+      .map((nome) => `<w:${nome} w:val="single" w:sz="4" w:space="0" w:color="${cor}"/>`)
+      .join("");
+    const colunas = span ? `<w:gridSpan w:val="${span}"/>` : "";
+    const medida = largura ? `<w:tcW w:w="${largura}" w:type="pct"/>` : "";
+    return `<w:tc><w:tcPr>${medida}${colunas}${fundo}<w:tcBorders>${lado}</w:tcBorders><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${conteudo}</w:tc>`;
+  }
+
+  function tabela(linhas) {
+    return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>${linhas
+      .map((celulas) => `<w:tr>${celulas.join("")}</w:tr>`)
+      .join("")}</w:tbl>`;
+  }
+
+  function campo(rotulo, valor, fill, borda, valorCor) {
+    return celula(
+      paragrafo(rotulo, { tamanho: "16", cor: "6D6E71", depois: "40" }) +
+        paragrafo(valor || "—", { negrito: true, cor: valorCor || "4D4D4D", depois: "0" }),
+      fill || "FFFFFF",
+      borda,
+    );
   }
 
   async function baixarDocx() {
@@ -416,28 +446,53 @@ const Ata = (() => {
       return;
     }
     const blocos = [
-      paragrafo("Ata da reunião", true),
-      paragrafo(draft.titulo || "Reunião de contratos"),
-      paragrafo(`Data: ${dataBR(draft.data)}`),
-      paragrafo(`Responsável: ${draft.responsavel_nome || "—"}`),
-      paragrafo(`Duração: ${currentDuration() || draft.duracao || "—"}`),
-      paragrafo(`Participantes: ${nomesSalvos().join(", ") || "—"}`),
-      paragrafo(""),
+      paragrafo("Ata da reunião", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
+      paragrafo("Descreva o que foi falado sobre cada objeto.", { tamanho: "18", cor: "6D6E71", depois: "160" }),
+      tabela([
+        [
+          campo("TÍTULO", draft.titulo),
+          campo("DATA", dataBR(draft.data)),
+          campo("RESPONSÁVEL", draft.responsavel_nome),
+          campo("DURAÇÃO", currentDuration() || draft.duracao, "E8F7EA", "B7E0BE", "2F9A3D"),
+        ],
+      ]),
+      paragrafo("", { depois: "120" }),
+      tabela([[
+        celula(
+          paragrafo("PARTICIPANTES", { tamanho: "16", cor: "6D6E71", depois: "60" }) +
+            paragrafo(nomesSalvos().join(", ") || "Nenhuma presença registrada nesta data.", { negrito: true, depois: "0" }),
+          "E6F7F5",
+          "B7E0DA",
+        ),
+      ]]),
+      paragrafo("", { depois: "120" }),
     ];
-    draft.itens.forEach((item, index) => {
+    draft.itens.forEach((item) => {
       const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
-      blocos.push(paragrafo(`${index + 1}. ${item.objeto || "Contrato"}`, true));
-      if (meta) blocos.push(paragrafo(meta));
-      if (item.tempo) blocos.push(paragrafo(`Tempo: ${item.tempo}`));
-      String(item.texto || "Sem registro.")
-        .split(/\n/)
-        .forEach((linha) => blocos.push(paragrafo(linha)));
-      blocos.push(paragrafo(""));
+      const linhas = String(item.texto || "").split(/\n/);
+      const texto = (linhas.some((linha) => linha.trim()) ? linhas : [" "])
+        .map((linha) => paragrafo(linha, { depois: "40" }))
+        .join("");
+      blocos.push(tabela([
+        [
+          celula(
+            paragrafo(meta || "Contrato", { tamanho: "16", cor: "6D6E71", depois: "40" }) +
+              paragrafo(item.objeto || "Contrato", { negrito: true, depois: "0" }),
+            "E6F3FB",
+            "C5DFF0",
+            null,
+            4200,
+          ),
+          celula(paragrafo(item.tempo || "", { negrito: true, cor: "2F9A3D", depois: "0" }), "E6F3FB", "C5DFF0", null, 800),
+        ],
+        [celula(texto, "FFFFFF", "C8CACB", 2)],
+      ]));
+      blocos.push(paragrafo("", { depois: "120" }));
     });
-    if (!draft.itens.length) blocos.push(paragrafo("Nenhum objeto nesta ata."));
+    if (!draft.itens.length) blocos.push(paragrafo("Nenhum objeto nesta ata.", { cor: "6D6E71" }));
     const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>${blocos.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body>
+  <w:body>${blocos.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="851" w:bottom="851" w:left="851"/></w:sectPr></w:body>
 </w:document>`;
     const zip = new JSZip();
     zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -557,6 +612,15 @@ const Ata = (() => {
 
     document.getElementById("ata-print").addEventListener("click", () => {
       readMeta();
+      document.querySelectorAll(".ata-print-value[data-print]").forEach((span) => {
+        const field = document.getElementById(span.dataset.print);
+        const value = field && field.value;
+        span.textContent = span.dataset.print === "ata-data" && value ? dataBR(value) : value || "—";
+      });
+      document.querySelectorAll(".ata-item textarea").forEach((area) => {
+        const box = area.parentElement.querySelector(".ata-texto-print");
+        if (box) box.textContent = area.value;
+      });
       document.body.classList.add("printing-ata");
       window.print();
     });

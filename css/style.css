@@ -569,6 +569,9 @@ h1 {
   background: var(--white);
 }
 
+.ata-print-value,
+.ata-texto-print { display: none; }
+
 .ata-time { font-weight: 800; color: var(--green-dark); white-space: nowrap; }
 
 .session-info { display: grid; gap: 2px; }
@@ -1686,7 +1689,45 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-actions,
   body.printing-ata .ata-sugestoes,
   body.printing-ata .ata-salvas,
-  body.printing-ata .ata-item .linkish { display: none !important; }
+  body.printing-ata .ata-item .linkish,
+  body.printing-ata #ata-presenca-recente,
+  body.printing-ata .ata-meta input,
+  body.printing-ata .ata-item textarea { display: none !important; }
+  body.printing-ata,
+  body.printing-ata * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.printing-ata .ata-print-value,
+  body.printing-ata .ata-texto-print {
+    display: block !important;
+    border: 1px solid #c8cacb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff !important;
+    color: #4d4d4d;
+    font-weight: 600;
+    white-space: pre-wrap;
+  }
+  body.printing-ata .ata-print-value.is-duracao {
+    background: #e8f7ea !important;
+    border-color: #b7e0be;
+    color: #2f9a3d;
+  }
+  body.printing-ata .ata-texto-print {
+    margin-top: 10px;
+    min-height: 48px;
+  }
+  body.printing-ata .ata-item {
+    background: #e6f3fb !important;
+    border: 1px solid #c5dff0 !important;
+    break-inside: avoid;
+  }
+  body.printing-ata .ata-participantes {
+    background: #e6f7f5 !important;
+    border: 1px solid #b7e0da !important;
+  }
+  body.printing-ata .ata-time { color: #2f9a3d !important; }
   body { background: white; }
   .topbar { position: static; box-shadow: none; }
   .topbar-actions, .filters, .chips, .pagination, .toolbar-actions, .banner, .alert-hint, .objeto-tip, .view-menu { display: none !important; }
