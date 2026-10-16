@@ -390,6 +390,10 @@ h1 {
 
 .freq-check input { accent-color: var(--green); }
 
+.ata-participantes .freq-checks { gap: 4px 0.35em; }
+
+.ata-participantes .freq-check:last-child .freq-virgula { display: none; }
+
 .view-frequencia {
   display: grid;
   gap: 12px;
@@ -1728,6 +1732,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
     background: #e6f7f5 !important;
     border: 1px solid #b7e0da !important;
   }
+  body.printing-ata .ata-participantes .freq-check.is-ultimo .freq-virgula { display: none; }
   body.printing-ata .ata-time { color: #2f9a3d !important; }
   body { background: white; }
   .topbar { position: static; box-shadow: none; }

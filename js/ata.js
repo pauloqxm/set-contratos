@@ -212,7 +212,7 @@ const Ata = (() => {
     host.innerHTML = opcoes
       .map((nome) => {
         const on = marcados.has(chaveNome(nome)) ? " checked" : "";
-        return `<label class="freq-check"><input type="checkbox" value="${esc(nome)}"${on} /> ${esc(nome)}</label>`;
+        return `<label class="freq-check"><input type="checkbox" value="${esc(nome)}"${on} /> ${esc(nome)}<span class="freq-virgula" aria-hidden="true">,</span></label>`;
       })
       .join("");
   }
@@ -660,6 +660,9 @@ const Ata = (() => {
         const box = area.parentElement.querySelector(".ata-texto-print");
         if (box) box.textContent = area.value;
       });
+      const nomes = [...document.querySelectorAll("#ata-participantes-lista .freq-check")];
+      nomes.forEach((label) => label.classList.remove("is-ultimo"));
+      nomes.filter((label) => label.querySelector("input")?.checked).at(-1)?.classList.add("is-ultimo");
       document.body.classList.add("printing-ata");
       window.print();
     });
