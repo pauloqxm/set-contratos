@@ -18,7 +18,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Headers": "apikey, authorization, content-type, x-sso-token",
+    "Access-Control-Allow-Headers": "apikey, authorization, content-type, x-sso-token, x-sso-name, x-sso-email",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   };
@@ -40,18 +40,24 @@ async function usuario(req: Request): Promise<Usuario | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, audience: CLIENT_ID });
-    const email = String(payload.email ?? "");
-    return { sub: String(payload.sub), nome: String(payload.name ?? email), email };
+    // O id_token do SSO costuma trazer só o sub; o nome e o e-mail vêm do profile no navegador.
+    const email = String(payload.email ?? req.headers.get("x-sso-email") ?? "").trim();
+    const nome = String(payload.name ?? req.headers.get("x-sso-name") ?? email).trim();
+    return { sub: String(payload.sub), nome, email };
   } catch {
     return null;
   }
 }
 
 async function registrar(user: Usuario): Promise<void> {
-  await db.from("ata_pessoas").upsert(
-    { sub: user.sub, nome: user.nome, email: user.email, ultimo_acesso: new Date().toISOString() },
-    { onConflict: "sub" },
-  );
+  const row: Record<string, string> = {
+    sub: user.sub,
+    ultimo_acesso: new Date().toISOString(),
+  };
+  if (user.nome) row.nome = user.nome;
+  if (user.email) row.email = user.email;
+  // Não apaga nome/e-mail já gravados se esta chamada vier sem eles.
+  await db.from("ata_pessoas").upsert(row, { onConflict: "sub", ignoreDuplicates: false });
 }
 
 Deno.serve(async (req) => {

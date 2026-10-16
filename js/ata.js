@@ -41,9 +41,14 @@ const Ata = (() => {
     element.classList.toggle("is-error", Boolean(isError));
   }
 
+  function profile() {
+    return SSO.user()?.profile || {};
+  }
+
   async function api(method, params, body) {
     const url = new URL(`${CONFIG.supabaseUrl}/functions/v1/${CONFIG.ataFunction}`);
     Object.entries(params || {}).forEach(([key, value]) => url.searchParams.set(key, value));
+    const who = profile();
     let response;
     try {
       response = await fetch(url, {
@@ -51,6 +56,8 @@ const Ata = (() => {
         headers: {
           apikey: CONFIG.supabaseKey,
           "x-sso-token": SSO.user().id_token,
+          "x-sso-name": who.name || "",
+          "x-sso-email": who.email || "",
           ...(body ? { "Content-Type": "application/json" } : {}),
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -130,15 +137,19 @@ const Ata = (() => {
       select.disabled = true;
       return;
     }
+    const who = profile();
     if (!draft.id && !draft.responsavel_sub) {
-      const me = pessoas.find((pessoa) => pessoa.sub === SSO.user()?.profile?.sub);
+      const me = pessoas.find((pessoa) => pessoa.sub === who.sub);
       if (me) {
         draft.responsavel_sub = me.sub;
-        draft.responsavel_nome = me.nome;
+        draft.responsavel_nome = me.nome || who.name || me.email || who.email || "";
         saveDraft();
       }
     }
-    const options = pessoas.map((pessoa) => ({ sub: pessoa.sub, nome: pessoa.nome || pessoa.email }));
+    const options = pessoas.map((pessoa) => ({
+      sub: pessoa.sub,
+      nome: pessoa.nome || pessoa.email || (pessoa.sub === who.sub ? who.name || who.email : "") || "Conta SSO",
+    }));
     if (draft.responsavel_sub && !options.some((pessoa) => pessoa.sub === draft.responsavel_sub)) {
       options.push({ sub: draft.responsavel_sub, nome: draft.responsavel_nome || "Pessoa sem acesso registrado" });
     }
