@@ -5,6 +5,9 @@ const Ata = (() => {
   const tokenKey = "set-ata-token";
   let draft = loadDraft();
   let expired = false;
+  let editando = !draft.id;
+  let pedindoToken = false;
+  let pendenteExcluir = null;
 
   function localISO(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -232,7 +235,7 @@ const Ata = (() => {
   }
 
   function travada() {
-    return Boolean(draft.id) && !temToken();
+    return Boolean(draft.id) && !editando;
   }
 
   function aplicarTrava() {
@@ -240,20 +243,28 @@ const Ata = (() => {
     if (!bar) return;
     const salva = Boolean(draft.id);
     const trava = travada();
-    bar.hidden = !salva;
-    document.getElementById("ata-token-campo").hidden = !trava;
-    document.getElementById("ata-token-ok").hidden = !trava;
-    document.getElementById("ata-delete").hidden = !salva || trava;
-    document.getElementById("ata-editor-nota").textContent = trava
-      ? "Ata salva. O token libera alterar os campos e excluir."
-      : "Edição liberada nesta sessão.";
-    ["ata-titulo", "ata-data", "ata-responsavel", "ata-save", "ata-from-checks", "ata-busca"].forEach((id) => {
+    document.getElementById("ata-edit").hidden = !trava;
+    document.getElementById("ata-delete").hidden = !salva;
+    document.getElementById("ata-save").hidden = trava;
+    document.getElementById("ata-save").disabled = false;
+    bar.hidden = !pedindoToken;
+    document.getElementById("ata-editor-nota").textContent = pendenteExcluir
+      ? "Informe o token para excluir a ata."
+      : "Ata concluída. O token libera a edição.";
+    ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca"].forEach((id) => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
     });
     document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens button, #ata-presenca-recente").forEach((field) => {
       field.disabled = trava;
     });
+  }
+
+  function pedirToken(excluirId) {
+    pendenteExcluir = excluirId || null;
+    pedindoToken = true;
+    aplicarTrava();
+    document.getElementById("ata-token").focus();
   }
 
   function readParticipantes() {
@@ -395,7 +406,7 @@ const Ata = (() => {
               const when = ata.data ? new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR") : "";
               const current = ata.id === draft.id ? " is-on" : "";
               const who = ata.responsavel_nome ? `Responsável: ${ata.responsavel_nome}` : ata.autor_nome || "";
-              return `<li><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button></li>`;
+              return `<li class="ata-salva-item"><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button><button type="button" class="btn-danger btn-small" data-delete="${esc(ata.id)}">Excluir</button></li>`;
             })
             .join("")
         : '<li class="hint">Nenhuma ata salva ainda.</li>';
@@ -419,11 +430,14 @@ const Ata = (() => {
         fim: ata.fim || "",
         itens: ata.itens.map((item) => ({ ...item, key: item.nup || item.objeto })),
       };
+      editando = false;
+      pedindoToken = false;
+      pendenteExcluir = null;
       saveDraft();
       fillMeta();
       renderItems();
       loadList();
-      note(`Ata de ${new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR")} aberta.`);
+      note(`Ata de ${new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR")} aberta. Ela está fechada para edição.`);
     } catch (error) {
       note(error.message, true);
     }
@@ -440,9 +454,9 @@ const Ata = (() => {
       note("Informe o responsável pela ata.", true);
       return;
     }
-    if (draft.id && !temToken()) {
-      aplicarTrava();
-      note("Para alterar uma ata salva, informe o token de edição.", true);
+    if (travada()) {
+      pedirToken();
+      note("A ata está concluída. Use Editar ata e o token para alterar.", true);
       return;
     }
     const button = document.getElementById("ata-save");
@@ -464,9 +478,12 @@ const Ata = (() => {
         itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
       });
       draft.id = id;
+      editando = false;
+      pedindoToken = false;
+      pendenteExcluir = null;
       saveDraft();
       const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      note(temToken() ? `Ata salva às ${hora}.` : `Ata salva às ${hora}. Para alterar ou excluir, informe o token de edição.`);
+      note(`Ata concluída às ${hora}. Os campos foram fechados.`);
       loadList();
     } catch (error) {
       note(error.message, true);
@@ -497,26 +514,62 @@ const Ata = (() => {
     }
     sessionStorage.setItem(tokenKey, token);
     document.getElementById("ata-token").value = "";
+    const alvo = pendenteExcluir;
+    pendenteExcluir = null;
+    pedindoToken = false;
+    if (alvo) {
+      aplicarTrava();
+      return excluir(alvo);
+    }
+    editando = true;
     aplicarTrava();
-    note("Edição de atas salvas liberada nesta sessão.");
+    note("Edição liberada. Conclua de novo para fechar a ata.");
   }
 
-  async function excluir() {
-    if (!draft.id || !temToken()) return;
+  function pedirEdicao() {
+    if (!draft.id) return;
+    if (temToken()) {
+      editando = true;
+      pedindoToken = false;
+      aplicarTrava();
+      note("Edição liberada. Conclua de novo para fechar a ata.");
+      return;
+    }
+    pedirToken();
+  }
+
+  function pedirExclusao(id) {
+    const alvo = id || draft.id;
+    if (!alvo) return;
+    if (!temToken()) {
+      pedirToken(alvo);
+      note("Informe o token para excluir a ata.", true);
+      return;
+    }
+    excluir(alvo);
+  }
+
+  async function excluir(id) {
+    const alvo = id || draft.id;
+    if (!alvo || !temToken()) return;
     if (!window.confirm("Excluir esta ata salva? Essa ação não desfaz.")) return;
     const button = document.getElementById("ata-delete");
     button.disabled = true;
     try {
-      await api("DELETE", { id: draft.id });
-      draft = emptyDraft();
-      saveDraft();
-      fillMeta();
-      renderItems();
+      await api("DELETE", { id: alvo });
+      if (draft.id === alvo) {
+        draft = emptyDraft();
+        editando = true;
+        saveDraft();
+        fillMeta();
+        renderItems();
+      }
       loadList();
       note("Ata excluída.");
     } catch (error) {
       note(error.message, true);
     } finally {
+      button.disabled = false;
       aplicarTrava();
     }
   }
@@ -729,12 +782,20 @@ const Ata = (() => {
     });
 
     document.getElementById("ata-lista").addEventListener("click", (event) => {
+      const remove = event.target.closest("button[data-delete]");
+      if (remove) {
+        pedirExclusao(remove.dataset.delete);
+        return;
+      }
       const button = event.target.closest("button[data-open]");
       if (button) openAta(button.dataset.open);
     });
 
     document.getElementById("ata-new").addEventListener("click", () => {
       draft = emptyDraft();
+      editando = true;
+      pedindoToken = false;
+      pendenteExcluir = null;
       saveDraft();
       fillMeta();
       renderItems();
@@ -763,6 +824,8 @@ const Ata = (() => {
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
 
     document.getElementById("ata-save").addEventListener("click", save);
+    document.getElementById("ata-edit").addEventListener("click", pedirEdicao);
+    document.getElementById("ata-delete").addEventListener("click", () => pedirExclusao());
     document.getElementById("ata-token-ok").addEventListener("click", liberarEdicao);
     document.getElementById("ata-token").addEventListener("keydown", (event) => {
       if (event.key === "Enter") liberarEdicao();

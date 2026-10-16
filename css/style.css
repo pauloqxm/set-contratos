@@ -324,6 +324,11 @@ h1 {
   background: var(--white);
 }
 
+.ata-editor[hidden],
+#ata-edit[hidden],
+#ata-delete[hidden],
+#ata-save[hidden] { display: none !important; }
+
 .ata-editor .hint { flex: 1 1 100%; margin: 0; }
 
 .ata-editor label { min-width: 220px; }
@@ -646,6 +651,10 @@ body.is-authed > .auth-gate { display: none; }
 .ata-salvas summary { cursor: pointer; font-weight: 700; font-size: 0.88rem; }
 
 .ata-lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.ata-salva-item { display: flex; align-items: center; gap: 8px; }
+
+.ata-salva-item .ata-open { flex: 1; }
 
 .ata-open {
   display: flex;
