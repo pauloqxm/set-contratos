@@ -3,6 +3,8 @@ const Comite = (() => {
   const meetingKey = "set-reuniao-comite";
   const meeting = { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map() };
   let projetos = [];
+  let filtro = "";
+  const recolhidos = new Set();
   let carregando = null;
   let carregado = false;
 
@@ -103,9 +105,10 @@ const Comite = (() => {
     if (!box) return;
     const tempo = elapsed();
     document.getElementById("comite-clock").textContent = tempo == null ? "00:00:00" : formatDuration(tempo);
-    const lidos = projetos.filter((projeto) => meeting.checks.has(projeto.id)).length;
-    document.getElementById("comite-read").textContent = projetos.length
-      ? `${lidos} de ${projetos.length} projetos discutidos`
+    const lista = visiveis();
+    const lidos = lista.filter((projeto) => meeting.checks.has(projeto.id)).length;
+    document.getElementById("comite-read").textContent = lista.length
+      ? `${lidos} de ${lista.length} projetos discutidos`
       : "0 discutidos";
     const on = meeting.startedAt != null && !meeting.endedAt;
     box.classList.toggle("is-on", meeting.startedAt != null);
@@ -168,7 +171,8 @@ const Comite = (() => {
           <tbody>${projeto.itens.map((item) => itemHtml(item, dia)).join("")}</tbody>
         </table></div>`
       : '<p class="hint">Nenhum item em aberto.</p>';
-    return `<article class="panel comite-card${marcado ? " is-read" : ""}" data-id="${esc(projeto.id)}">
+    const recolhido = recolhidos.has(projeto.id);
+    return `<article class="panel comite-card${marcado ? " is-read" : ""}${recolhido ? " is-collapsed" : ""}" data-id="${esc(projeto.id)}">
       <header class="comite-card-head">
         <label class="read-check" title="Marcar como discutido na reunião">
           <input type="checkbox" class="js-comite-check" data-id="${esc(projeto.id)}" ${marcado ? "checked" : ""} aria-label="Marcar ${esc(projeto.nome)} como discutido" />
@@ -177,6 +181,7 @@ const Comite = (() => {
         <div class="comite-card-title">
           <h3>${esc(projeto.nome)}</h3>
           ${projeto.descricao ? `<p class="hint">${esc(projeto.descricao)}</p>` : ""}
+          <button type="button" class="comite-toggle" data-toggle="${esc(projeto.id)}" aria-expanded="${recolhido ? "false" : "true"}">${recolhido ? "Mostrar itens" : "Recolher itens"}</button>
         </div>
         <div class="comite-resumo">
           ${prazo ? `<span class="hint">${esc(prazo)}</span>` : ""}
@@ -185,20 +190,75 @@ const Comite = (() => {
         </div>
       </header>
       <div class="comite-status">${contagem(projeto.itens)}</div>
-      ${corpo}
+      <div class="comite-corpo">${corpo}</div>
     </article>`;
+  }
+
+  function visiveis() {
+    return filtro ? projetos.filter((projeto) => projeto.id === filtro) : projetos;
+  }
+
+  function preencherFiltro() {
+    const select = document.getElementById("comite-filtro");
+    if (!select) return;
+    const atual = filtro;
+    select.innerHTML = `<option value="">Todos os projetos</option>${projetos
+      .map((projeto) => `<option value="${esc(projeto.id)}">${esc(projeto.nome)}</option>`)
+      .join("")}`;
+    select.value = projetos.some((projeto) => projeto.id === atual) ? atual : "";
+    filtro = select.value;
+  }
+
+  function pintarRecolher() {
+    const button = document.getElementById("comite-recolher");
+    if (!button) return;
+    const lista = visiveis();
+    const todos = lista.length > 0 && lista.every((projeto) => recolhidos.has(projeto.id));
+    button.textContent = todos ? "Mostrar itens" : "Recolher itens";
+    button.disabled = !lista.length;
+  }
+
+  function recolher(id) {
+    if (recolhidos.has(id)) recolhidos.delete(id);
+    else recolhidos.add(id);
+    const card = document.querySelector(`.comite-card[data-id="${CSS.escape(id)}"]`);
+    if (!card) return pintarRecolher();
+    const fechado = recolhidos.has(id);
+    card.classList.toggle("is-collapsed", fechado);
+    const button = card.querySelector(".comite-toggle");
+    if (button) {
+      button.textContent = fechado ? "Mostrar itens" : "Recolher itens";
+      button.setAttribute("aria-expanded", fechado ? "false" : "true");
+    }
+    pintarRecolher();
+  }
+
+  function recolherTodos() {
+    const lista = visiveis();
+    const todos = lista.length > 0 && lista.every((projeto) => recolhidos.has(projeto.id));
+    lista.forEach((projeto) => {
+      if (todos) recolhidos.delete(projeto.id);
+      else recolhidos.add(projeto.id);
+    });
+    render();
   }
 
   function render() {
     const host = document.getElementById("comite-pauta");
     if (!host) return;
     const dia = hoje();
-    host.innerHTML = projetos.length
-      ? projetos.map((projeto) => cardHtml(projeto, dia)).join("")
+    const lista = visiveis();
+    host.innerHTML = lista.length
+      ? lista.map((projeto) => cardHtml(projeto, dia)).join("")
       : carregado
-        ? '<p class="hint">Nenhum projeto ativo na pauta.</p>'
+        ? `<p class="hint">${projetos.length ? "Nenhum projeto corresponde ao filtro." : "Nenhum projeto ativo na pauta."}</p>`
         : '<p class="hint">Carregando a pauta…</p>';
+    const total = lista.reduce((soma, projeto) => soma + projeto.itens.length, 0);
+    document.getElementById("comite-count").textContent = lista.length
+      ? `${lista.length} projeto${lista.length > 1 ? "s" : ""} · ${total} itens em aberto`
+      : carregado ? "" : "Carregando a pauta…";
     paintMeeting();
+    pintarRecolher();
   }
 
   async function load(force) {
@@ -209,8 +269,7 @@ const Comite = (() => {
         const data = await Ata.api("GET", { pauta: "comite" });
         projetos = Array.isArray(data.projetos) ? data.projetos : [];
         carregado = true;
-        const total = projetos.reduce((soma, projeto) => soma + projeto.itens.length, 0);
-        document.getElementById("comite-count").textContent = `${projetos.length} projetos · ${total} itens em aberto`;
+        preencherFiltro();
         note("");
       } catch (error) {
         note(error.message, true);
@@ -233,9 +292,18 @@ const Comite = (() => {
     document.getElementById("comite-start").addEventListener("click", start);
     document.getElementById("comite-end").addEventListener("click", end);
     document.getElementById("comite-refresh").addEventListener("click", () => load(true));
+    document.getElementById("comite-filtro").addEventListener("change", (event) => {
+      filtro = event.target.value;
+      render();
+    });
+    document.getElementById("comite-recolher").addEventListener("click", recolherTodos);
     document.getElementById("comite-pauta").addEventListener("change", (event) => {
       const box = event.target.closest(".js-comite-check");
       if (box) marcar(box.dataset.id, box.checked);
+    });
+    document.getElementById("comite-pauta").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-toggle]");
+      if (button) recolher(button.dataset.toggle);
     });
     paintMeeting();
   });

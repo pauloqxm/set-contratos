@@ -324,7 +324,44 @@ h1 {
   cursor: default;
 }
 
+.comite-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.comite-bar .ata-search { min-width: min(100%, 280px); }
+
+.comite-bar select {
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid #c8cacb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--white);
+}
+
 .comite-pauta { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+.comite-toggle {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.comite-toggle:hover { text-decoration: underline; }
+
+.comite-card.is-collapsed .comite-corpo { display: none; }
 
 .comite-card { padding: 14px 16px; border-left: 4px solid var(--blue); }
 
@@ -458,7 +495,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .ata-token-form input, .freq-bar select, .freq-bar input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .ata-search select, .ata-token-form input, .freq-bar select, .freq-bar input, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;

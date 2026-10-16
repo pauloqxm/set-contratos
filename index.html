@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=11" />
+  <link rel="stylesheet" href="css/style.css?v=12" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -377,6 +377,14 @@
           <button type="button" id="comite-refresh" class="btn-ghost btn-small">Atualizar pauta</button>
         </div>
       </div>
+      <div class="comite-bar">
+        <label class="ata-search">Projeto
+          <select id="comite-filtro" aria-label="Filtrar projetos da pauta">
+            <option value="">Todos os projetos</option>
+          </select>
+        </label>
+        <button type="button" id="comite-recolher" class="btn-ghost btn-small">Recolher itens</button>
+      </div>
       <p id="comite-note" class="banner" role="status" hidden></p>
       <div id="comite-pauta" class="comite-pauta"></div>
     </section>
@@ -582,7 +590,7 @@
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/frequencia.js"></script>
-  <script defer src="js/comite.js?v=1"></script>
+  <script defer src="js/comite.js?v=2"></script>
   <script defer src="js/ata.js?v=11"></script>
 </body>
 </html>
