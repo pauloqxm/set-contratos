@@ -34,8 +34,13 @@ ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_sub TEXT;
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_nome TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS inicio TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS fim TEXT NOT NULL DEFAULT '';
+-- tipo: 'contratos' (Reunião de Contratos) ou 'comite' (Comitê Executivo).
+ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'contratos';
+-- ref: id do projeto nas atas do Comitê.
+ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS ref TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_data ON public.ata_reunioes(data DESC);
+CREATE INDEX IF NOT EXISTS idx_ata_reunioes_tipo ON public.ata_reunioes(tipo, data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_itens_reuniao ON public.ata_itens(reuniao_id, ordem);
 
 ALTER TABLE public.ata_reunioes ENABLE ROW LEVEL SECURITY;
@@ -53,9 +58,10 @@ AS $$
 DECLARE
     v_id UUID := NULLIF(p_ata->>'id', '')::UUID;
     v_resp_nome TEXT := COALESCE(NULLIF(TRIM(p_ata->>'responsavel_nome'), ''), '');
+    v_tipo TEXT := CASE WHEN p_ata->>'tipo' = 'comite' THEN 'comite' ELSE 'contratos' END;
 BEGIN
     IF v_id IS NULL THEN
-        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_nome, inicio, fim)
+        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_nome, inicio, fim, tipo)
         VALUES (
             p_ata->>'titulo',
             (p_ata->>'data')::DATE,
@@ -65,7 +71,8 @@ BEGIN
             COALESCE(p_autor_nome, ''),
             v_resp_nome,
             COALESCE(p_ata->>'inicio', ''),
-            COALESCE(p_ata->>'fim', '')
+            COALESCE(p_ata->>'fim', ''),
+            v_tipo
         )
         RETURNING id INTO v_id;
     ELSE
@@ -77,6 +84,7 @@ BEGIN
             inicio = COALESCE(p_ata->>'inicio', ''),
             fim = COALESCE(p_ata->>'fim', ''),
             responsavel_nome = v_resp_nome,
+            tipo = v_tipo,
             atualizada_em = now()
         WHERE id = v_id;
         IF NOT FOUND THEN
@@ -85,7 +93,7 @@ BEGIN
         DELETE FROM ata_itens WHERE reuniao_id = v_id;
     END IF;
 
-    INSERT INTO ata_itens (reuniao_id, ordem, nup, contrato, contratada, objeto, tempo, texto)
+    INSERT INTO ata_itens (reuniao_id, ordem, nup, contrato, contratada, objeto, tempo, texto, ref)
     SELECT
         v_id,
         (item.ordinality - 1)::INTEGER,
@@ -94,7 +102,8 @@ BEGIN
         COALESCE(item.value->>'contratada', ''),
         COALESCE(item.value->>'objeto', ''),
         COALESCE(item.value->>'tempo', ''),
-        COALESCE(item.value->>'texto', '')
+        COALESCE(item.value->>'texto', ''),
+        COALESCE(item.value->>'ref', '')
     FROM jsonb_array_elements(COALESCE(p_ata->'itens', '[]'::JSONB)) WITH ORDINALITY AS item(value, ordinality);
 
     RETURN v_id;

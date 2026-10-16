@@ -80,6 +80,39 @@ async function usuario(req: Request): Promise<{ sub: string; nome: string } | { 
   }
 }
 
+const ENCERRADOS = ["Concluído", "Não se aplica"];
+const PRIORIDADE: Record<string, number> = { "Crítica": 0, Alta: 1, "Média": 2, Baixa: 3 };
+
+// Pauta do Comitê Executivo: projetos ativos e os itens ainda abertos de cada um. Só leitura.
+async function pautaComite(req: Request): Promise<Response> {
+  const { data: projetos, error } = await db
+    .from("projetos")
+    .select("id, nome, descricao, prazo_conclusao")
+    .eq("ativo", 1)
+    .order("nome");
+  if (error) return json(req, 500, { erro: error.message });
+  const ids = (projetos ?? []).map((projeto) => projeto.id);
+  const { data: itens, error: itensError } = ids.length
+    ? await db
+      .from("itens")
+      .select("id, projeto_id, frente, entrega, responsavel, parceiros, prioridade, prazo, prazo_hora, status, proxima, obs, nup")
+      .in("projeto_id", ids)
+    : { data: [], error: null };
+  if (itensError) return json(req, 500, { erro: itensError.message });
+  const abertos = (itens ?? [])
+    .filter((item) => !ENCERRADOS.includes(String(item.status ?? "").trim()))
+    .sort((a, b) =>
+      (PRIORIDADE[a.prioridade] ?? 4) - (PRIORIDADE[b.prioridade] ?? 4) ||
+      String(a.prazo || "9999").localeCompare(String(b.prazo || "9999"))
+    );
+  return json(req, 200, {
+    projetos: (projetos ?? []).map((projeto) => ({
+      ...projeto,
+      itens: abertos.filter((item) => item.projeto_id === projeto.id),
+    })),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
 
@@ -87,11 +120,15 @@ Deno.serve(async (req) => {
   if ("erro" in user) return json(req, 401, { erro: user.erro });
 
   if (req.method === "GET") {
-    const id = new URL(req.url).searchParams.get("id");
+    const params = new URL(req.url).searchParams;
+    if (params.get("pauta") === "comite") return pautaComite(req);
+    const id = params.get("id");
     if (!id) {
+      const tipo = params.get("tipo") === "comite" ? "comite" : "contratos";
       const { data, error } = await db
         .from("ata_reunioes")
-        .select("id, titulo, data, autor_nome, responsavel_nome, atualizada_em")
+        .select("id, titulo, data, tipo, autor_nome, responsavel_nome, atualizada_em")
+        .eq("tipo", tipo)
         .order("data", { ascending: false })
         .order("atualizada_em", { ascending: false })
         .limit(50);
@@ -104,7 +141,7 @@ Deno.serve(async (req) => {
     if (!ata) return json(req, 404, { erro: "Ata não encontrada." });
     const { data: itens, error: itensError } = await db
       .from("ata_itens")
-      .select("nup, contrato, contratada, objeto, tempo, texto")
+      .select("nup, contrato, contratada, objeto, tempo, texto, ref")
       .eq("reuniao_id", id)
       .order("ordem");
     if (itensError) return json(req, 500, { erro: itensError.message });

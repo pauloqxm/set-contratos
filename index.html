@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=9" />
+  <link rel="stylesheet" href="css/style.css?v=11" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -46,9 +46,13 @@
             <strong>Painel</strong>
             <span>Indicadores, gráficos e tabela dos contratos</span>
           </button>
+          <button type="button" class="view-tab" data-view="comite">
+            <strong>Comitê Executivo</strong>
+            <span>Pauta semanal dos projetos ativos</span>
+          </button>
           <button type="button" class="view-tab" data-view="ata">
             <strong>Ata</strong>
-            <span>Ata da reunião, por objeto</span>
+            <span>Ata da reunião de contratos ou do comitê</span>
           </button>
           <button type="button" class="view-tab" data-view="frequencia">
             <strong>Frequência</strong>
@@ -356,13 +360,40 @@
     </section>
     </div>
 
+    <section id="view-comite" class="view-comite" hidden>
+      <div class="panel comite-head">
+        <div>
+          <h2>Comitê Executivo</h2>
+          <p class="hint">Pauta semanal: cada projeto ativo é um ponto, com os itens ainda em aberto.</p>
+          <p id="comite-count" class="hint" aria-live="polite"></p>
+        </div>
+        <div class="toolbar-actions">
+          <div class="meeting" id="comite-meeting">
+            <button type="button" id="comite-start" class="btn-run btn-small" aria-pressed="false">Iniciar reunião</button>
+            <button type="button" id="comite-end" class="btn-ghost btn-small" hidden>Encerrar reunião</button>
+            <span id="comite-clock" class="meeting-clock">00:00:00</span>
+            <span id="comite-read" class="meeting-read">0 discutidos</span>
+          </div>
+          <button type="button" id="comite-refresh" class="btn-ghost btn-small">Atualizar pauta</button>
+        </div>
+      </div>
+      <p id="comite-note" class="banner" role="status" hidden></p>
+      <div id="comite-pauta" class="comite-pauta"></div>
+    </section>
+
     <section id="view-ata" class="view-ata" hidden>
       <div class="panel ata-sheet">
         <header class="ata-head">
           <div>
-            <h2>Ata da reunião</h2>
-            <p class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
+            <h2 id="ata-heading">Ata da reunião</h2>
+            <p id="ata-subtitulo" class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
           </div>
+          <label class="ata-tipo">Reunião
+            <select id="ata-tipo">
+              <option value="contratos">Reunião de Contratos</option>
+              <option value="comite">Comitê Executivo</option>
+            </select>
+          </label>
           <div class="ata-actions">
             <button type="button" id="ata-new" class="btn-ghost btn-small">Nova ata</button>
             <button type="button" id="ata-print" class="btn-ghost btn-small">Imprimir ata</button>
@@ -411,7 +442,7 @@
         </fieldset>
         <div class="ata-tools">
           <button type="button" id="ata-from-checks" class="btn-ghost btn-small">Trazer contratos lidos</button>
-          <label class="ata-search">Incluir contrato
+          <label class="ata-search"><span id="ata-busca-rotulo">Incluir contrato</span>
             <input id="ata-busca" type="search" placeholder="Objeto, NUP, contrato ou contratada" autocomplete="off" />
           </label>
         </div>
@@ -551,6 +582,7 @@
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/frequencia.js"></script>
-  <script defer src="js/ata.js?v=10"></script>
+  <script defer src="js/comite.js?v=1"></script>
+  <script defer src="js/ata.js?v=11"></script>
 </body>
 </html>

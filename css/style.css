@@ -300,7 +300,108 @@ h1 {
 .view-tab.is-on strong { color: var(--orange); }
 
 .view-ata[hidden],
+.view-comite[hidden],
 .view-frequencia[hidden] { display: none; }
+
+.comite-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.comite-head h2 { margin: 0; }
+
+.comite-head .toolbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+#comite-start:disabled {
+  opacity: 1;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  cursor: default;
+}
+
+.comite-pauta { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+.comite-card { padding: 14px 16px; border-left: 4px solid var(--blue); }
+
+.comite-card.is-read { border-left-color: var(--green); background: #fbfefb; }
+
+.comite-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.comite-card-head .read-check { min-width: 4.6rem; padding-top: 2px; }
+
+.comite-card-title h3 { margin: 0 0 2px; font-size: 1rem; line-height: 1.35; }
+
+.comite-resumo { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+.comite-status { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; }
+
+.comite-tabela { margin-top: 10px; overflow-x: auto; }
+
+.comite-tabela table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+
+.comite-tabela th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+}
+
+.comite-tabela td { padding: 7px 8px; border-bottom: 1px solid #ececec; vertical-align: top; line-height: 1.4; }
+
+.comite-tabela td .ata-kicker { display: block; margin: 0 0 2px; }
+
+.comite-tabela td:nth-child(1) { min-width: 220px; font-weight: 600; }
+
+.comite-tabela td:nth-child(6) { min-width: 200px; color: var(--ink-soft); }
+
+.comite-prazo { white-space: nowrap; }
+
+.comite-tabela tr.is-late .comite-prazo { color: var(--danger); font-weight: 700; }
+
+.ata-tipo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.ata-tipo select {
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  border: 1px solid #c8cacb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--white);
+}
+
+.ata-tipo select:disabled { background: #f4f5f5; cursor: default; }
+
+@media (max-width: 720px) {
+  .comite-card-head { grid-template-columns: auto minmax(0, 1fr); }
+  .comite-resumo { grid-column: 1 / -1; align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+}
 
 .ata-sheet { margin-top: 16px; padding: 16px; }
 
@@ -1716,6 +1817,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .view-menu,
   body.printing-ata #view-painel,
   body.printing-ata #view-frequencia,
+  body.printing-ata #view-comite,
+  body.printing-ata .ata-tipo,
   body.printing-ata .freq-check:not(:has(input:checked)),
   body.printing-ata .freq-check input,
   body.printing-ata .topbar-actions,

@@ -13,11 +13,21 @@ const Ata = (() => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
-  function emptyDraft() {
+  function comite(tipo = draft?.tipo) {
+    return tipo === "comite";
+  }
+
+  function tituloPadrao(tipo) {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    return comite(tipo) ? `Reunião do Comitê Executivo ${hoje}` : `Reunião de contratos ${hoje}`;
+  }
+
+  function emptyDraft(tipo = "contratos") {
     const today = new Date();
     return {
       id: null,
-      titulo: `Reunião de contratos ${today.toLocaleDateString("pt-BR")}`,
+      tipo: comite(tipo) ? "comite" : "contratos",
+      titulo: tituloPadrao(tipo),
       data: localISO(today),
       responsavel_nome: "",
       participantes: null,
@@ -124,6 +134,7 @@ const Ata = (() => {
 
   function show(view) {
     document.getElementById("view-painel").hidden = view !== "painel";
+    document.getElementById("view-comite").hidden = view !== "comite";
     document.getElementById("view-ata").hidden = view !== "ata";
     document.getElementById("view-frequencia").hidden = view !== "frequencia";
     document.querySelectorAll(".view-tab").forEach((button) => {
@@ -139,10 +150,12 @@ const Ata = (() => {
     toggleMenu(false);
     if (view !== "ata") esquecerToken();
     if (view === "ata") {
+      aplicarTipo();
       fillMeta();
       renderItems();
       loadList();
     }
+    if (view === "comite") Comite.show();
     if (view === "frequencia") Frequencia.show();
   }
 
@@ -271,6 +284,7 @@ const Ata = (() => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
     });
+    document.getElementById("ata-tipo").disabled = salva;
     document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens button, #ata-presenca-recente").forEach((field) => {
       field.disabled = trava;
     });
@@ -299,9 +313,21 @@ const Ata = (() => {
       .join(", ");
   }
 
+  function reuniao() {
+    if (comite()) {
+      const m = Comite.meeting();
+      return { startedAt: m.startedAt, inicio: m.inicio, fim: m.fim, elapsed: Comite.elapsed() };
+    }
+    return { startedAt: state.meeting.startedAt, inicio: state.meeting.inicio, fim: state.meeting.fim, elapsed: meetingElapsed() };
+  }
+
+  function reuniaoViva() {
+    return !draft.id || draft.data === localISO();
+  }
+
   function horariosAtuais() {
-    const vivo = state.meeting.inicio && (!draft.id || draft.data === localISO());
-    if (vivo) return { inicio: state.meeting.inicio, fim: state.meeting.fim || "" };
+    const atual = reuniao();
+    if (atual.inicio && reuniaoViva()) return { inicio: atual.inicio, fim: atual.fim || "" };
     return { inicio: draft.inicio || "", fim: draft.fim || "" };
   }
 
@@ -309,7 +335,7 @@ const Ata = (() => {
     const horas = horariosAtuais();
     document.getElementById("ata-inicio").value = horas.inicio || "—";
     document.getElementById("ata-fim").value = horas.fim || "—";
-    if (state.meeting.inicio && (!draft.id || draft.data === localISO())) {
+    if (reuniao().inicio && reuniaoViva()) {
       draft.inicio = horas.inicio;
       draft.fim = horas.fim;
       saveDraft();
@@ -318,10 +344,42 @@ const Ata = (() => {
   }
 
   function currentDuration() {
-    const vivo = state.meeting.startedAt && (!draft.id || draft.data === localISO());
-    if (!vivo) return draft.duracao;
-    const elapsed = meetingElapsed();
-    return elapsed == null ? draft.duracao : formatDuration(elapsed);
+    const atual = reuniao();
+    if (!atual.startedAt || !reuniaoViva()) return draft.duracao;
+    return atual.elapsed == null ? draft.duracao : formatDuration(atual.elapsed);
+  }
+
+  function aplicarTipo() {
+    const ehComite = comite();
+    document.getElementById("ata-tipo").value = ehComite ? "comite" : "contratos";
+    document.getElementById("ata-heading").textContent = ehComite ? "Ata do Comitê Executivo" : "Ata da reunião de contratos";
+    document.getElementById("ata-subtitulo").textContent = ehComite
+      ? "Descreva o que foi falado sobre cada projeto. O rascunho fica neste navegador até ser salvo."
+      : "Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.";
+    document.getElementById("ata-from-checks").textContent = ehComite ? "Trazer projetos discutidos" : "Trazer contratos lidos";
+    document.getElementById("ata-busca-rotulo").textContent = ehComite ? "Incluir projeto" : "Incluir contrato";
+    document.getElementById("ata-busca").placeholder = ehComite ? "Nome do projeto" : "Objeto, NUP, contrato ou contratada";
+    document.getElementById("ata-vazio").textContent = ehComite
+      ? "Nenhum projeto na ata. Traga os projetos discutidos ou busque um projeto."
+      : "Nenhum objeto na ata. Traga os contratos marcados como lidos ou busque um contrato.";
+  }
+
+  async function trocarTipo(tipo) {
+    if (draft.id) return;
+    readMeta();
+    const anterior = draft.tipo;
+    draft.tipo = comite(tipo) ? "comite" : "contratos";
+    if (!draft.titulo || draft.titulo === tituloPadrao(anterior)) draft.titulo = tituloPadrao(draft.tipo);
+    draft.itens = [];
+    draft.inicio = "";
+    draft.fim = "";
+    draft.duracao = "";
+    saveDraft();
+    aplicarTipo();
+    fillMeta();
+    renderItems();
+    loadList();
+    if (comite()) Comite.load();
   }
 
   function fillMeta() {
@@ -365,8 +423,32 @@ const Ata = (() => {
     return true;
   }
 
+  function addProjeto(projeto, tempo) {
+    const key = `p:${projeto.id}`;
+    const current = draft.itens.find((item) => item.key === key);
+    if (current) {
+      if (!current.tempo && tempo) current.tempo = stampText(tempo);
+      return false;
+    }
+    draft.itens.push({ key, ref: projeto.id, nup: "", contrato: "", contratada: "", objeto: projeto.nome || projeto.id, tempo: stampText(tempo), texto: "" });
+    return true;
+  }
+
+  function marcados() {
+    return comite() ? Comite.meeting().checks : state.meeting.checks;
+  }
+
   function bringChecks() {
     let added = 0;
+    if (comite()) {
+      Comite.meeting().checks.forEach((tempo, id) => {
+        const projeto = Comite.projetos().find((item) => item.id === id);
+        if (projeto && addProjeto(projeto, tempo)) added += 1;
+      });
+      saveDraft();
+      renderItems();
+      return added;
+    }
     state.meeting.checks.forEach((tempo, id) => {
       const row = state.rows.find((item) => item.id === id);
       if (row && addRow(row, tempo)) added += 1;
@@ -381,7 +463,7 @@ const Ata = (() => {
     document.getElementById("ata-vazio").hidden = draft.itens.length > 0;
     host.innerHTML = draft.itens
       .map((item, index) => {
-        const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
+        const meta = item.ref ? "Projeto" : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
         return `<article class="ata-item">
           <header>
             <div>
@@ -394,7 +476,7 @@ const Ata = (() => {
             </div>
           </header>
           <label class="sr-only" for="ata-texto-${index}">O que foi falado</label>
-          <textarea id="ata-texto-${index}" data-texto="${index}" placeholder="O que foi falado sobre este objeto">${esc(item.texto)}</textarea>
+          <textarea id="ata-texto-${index}" data-texto="${index}" placeholder="O que foi falado sobre este ${item.ref ? "projeto" : "objeto"}">${esc(item.texto)}</textarea>
           <div class="ata-texto-print">${esc(item.texto)}</div>
         </article>`;
       })
@@ -405,6 +487,22 @@ const Ata = (() => {
   function suggestions(query) {
     const list = document.getElementById("ata-sugestoes");
     const term = query.trim().toLocaleLowerCase("pt-BR");
+    if (comite()) {
+      const projetos = Comite.projetos();
+      if (term.length >= 2 && !projetos.length) {
+        Comite.load().then(() => {
+          if (document.getElementById("ata-busca").value.trim().toLocaleLowerCase("pt-BR") === term && Comite.projetos().length) suggestions(query);
+        });
+      }
+      const achados = term.length < 2
+        ? []
+        : projetos.filter((projeto) => `${projeto.nome} ${projeto.id}`.toLocaleLowerCase("pt-BR").includes(term)).slice(0, 8);
+      list.hidden = achados.length === 0;
+      list.innerHTML = achados
+        .map((projeto) => `<li><button type="button" data-add-projeto="${esc(projeto.id)}"><strong>${esc(projeto.nome)}</strong> — ${projeto.itens.length} itens em aberto</button></li>`)
+        .join("");
+      return;
+    }
     if (term.length < 2 || !state.rows.length) {
       list.hidden = true;
       list.innerHTML = "";
@@ -422,7 +520,7 @@ const Ata = (() => {
   async function loadList() {
     const list = document.getElementById("ata-lista");
     try {
-      const data = await api("GET");
+      const data = await api("GET", { tipo: draft.tipo });
       list.innerHTML = data.atas.length
         ? data.atas
             .map((ata) => {
@@ -432,7 +530,7 @@ const Ata = (() => {
               return `<li class="ata-salva-item"><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button><button type="button" class="btn-danger btn-small" data-delete="${esc(ata.id)}">Excluir</button></li>`;
             })
             .join("")
-        : '<li class="hint">Nenhuma ata salva ainda.</li>';
+        : `<li class="hint">Nenhuma ata ${comite() ? "do Comitê Executivo" : "de contratos"} salva ainda.</li>`;
     } catch (error) {
       list.innerHTML = "";
       note(error.message, true);
@@ -444,6 +542,7 @@ const Ata = (() => {
       const { ata } = await api("GET", { id });
       draft = {
         id: ata.id,
+        tipo: ata.tipo === "comite" ? "comite" : "contratos",
         titulo: ata.titulo,
         data: ata.data,
         responsavel_nome: ata.responsavel_nome || "",
@@ -451,12 +550,13 @@ const Ata = (() => {
         duracao: ata.duracao,
         inicio: ata.inicio || "",
         fim: ata.fim || "",
-        itens: ata.itens.map((item) => ({ ...item, key: item.nup || item.objeto })),
+        itens: ata.itens.map((item) => ({ ...item, key: item.ref ? `p:${item.ref}` : item.nup || item.objeto })),
       };
       editando = false;
       pedindoToken = false;
       pendenteExcluir = null;
       saveDraft();
+      aplicarTipo();
       fillMeta();
       renderItems();
       loadList();
@@ -491,6 +591,7 @@ const Ata = (() => {
     try {
       const { id } = await api("POST", null, {
         id: draft.id,
+        tipo: draft.tipo,
         titulo: draft.titulo,
         data: draft.data,
         responsavel_nome: draft.responsavel_nome,
@@ -498,7 +599,7 @@ const Ata = (() => {
         duracao: draft.duracao,
         inicio: draft.inicio,
         fim: draft.fim,
-        itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
+        itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto, ref }) => ({ nup, contrato, contratada, objeto, tempo, texto, ref: ref || "" })),
       });
       draft.id = id;
       editando = false;
@@ -583,7 +684,7 @@ const Ata = (() => {
     try {
       await api("DELETE", { id: alvo });
       if (draft.id === alvo) {
-        draft = emptyDraft();
+        draft = emptyDraft(draft.tipo);
         editando = true;
         saveDraft();
         fillMeta();
@@ -649,9 +750,11 @@ const Ata = (() => {
       note("Não foi possível gerar o arquivo Word.", true);
       return;
     }
+    const ehComite = comite();
+    const rotuloItem = ehComite ? "Projeto" : "Contrato";
     const blocos = [
-      paragrafo("Ata da reunião", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
-      paragrafo("Descreva o que foi falado sobre cada objeto.", { tamanho: "18", cor: "6D6E71", depois: "160" }),
+      paragrafo(ehComite ? "Ata do Comitê Executivo" : "Ata da reunião de contratos", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
+      paragrafo(`Descreva o que foi falado sobre cada ${ehComite ? "projeto" : "objeto"}.`, { tamanho: "18", cor: "6D6E71", depois: "160" }),
     ];
     const horas = fillHorarios();
     const linhas = [[
@@ -672,15 +775,15 @@ const Ata = (() => {
       ),
     ]];
     draft.itens.forEach((item) => {
-      const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
+      const meta = item.ref ? "Projeto" : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
       const partes = String(item.texto || "").split(/\n/);
       const texto = (partes.some((linha) => linha.trim()) ? partes : [" "])
         .map((linha) => paragrafo(linha, { depois: "40" }))
         .join("");
       linhas.push([
         celula(
-          paragrafo(meta || "Contrato", { tamanho: "16", cor: "6D6E71", depois: "40" }) +
-            paragrafo(item.objeto || "Contrato", { negrito: true, depois: "0" }),
+          paragrafo(meta || rotuloItem, { tamanho: "16", cor: "6D6E71", depois: "40" }) +
+            paragrafo(item.objeto || rotuloItem, { negrito: true, depois: "0" }),
           "E6F3FB",
           "C5DFF0",
           3,
@@ -697,7 +800,7 @@ const Ata = (() => {
       linhas.push([celula(texto, "FFFFFF", "C8CACB", 4)]);
     });
     blocos.push(tabela(linhas));
-    if (!draft.itens.length) blocos.push(paragrafo("Nenhum objeto nesta ata.", { cor: "6D6E71" }));
+    if (!draft.itens.length) blocos.push(paragrafo(ehComite ? "Nenhum projeto nesta ata." : "Nenhum objeto nesta ata.", { cor: "6D6E71" }));
     const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>${blocos.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="851" w:bottom="851" w:left="851"/></w:sectPr></w:body>
@@ -719,7 +822,7 @@ const Ata = (() => {
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
     const link = document.createElement("a");
-    const nome = `ata-${draft.data || "reuniao"}.docx`;
+    const nome = `ata-${ehComite ? "comite-" : ""}${draft.data || "reuniao"}.docx`;
     link.href = URL.createObjectURL(blob);
     link.download = nome;
     link.click();
@@ -769,17 +872,33 @@ const Ata = (() => {
       input.dispatchEvent(new Event("change"));
     });
 
-    document.getElementById("ata-from-checks").addEventListener("click", () => {
+    document.getElementById("ata-tipo").addEventListener("change", (event) => trocarTipo(event.target.value));
+
+    document.getElementById("ata-from-checks").addEventListener("click", async () => {
+      if (comite() && Comite.meeting().checks.size) await Comite.load();
       const added = bringChecks();
-      if (!added && !state.meeting.checks.size) {
+      if (!added && !marcados().size) {
         const empty = document.getElementById("ata-vazio");
         empty.hidden = false;
-        empty.textContent = "Nenhum contrato foi marcado como lido nesta reunião.";
+        empty.textContent = comite()
+          ? "Nenhum projeto foi marcado como discutido na reunião do Comitê."
+          : "Nenhum contrato foi marcado como lido nesta reunião.";
       }
     });
 
     document.getElementById("ata-busca").addEventListener("input", (event) => suggestions(event.target.value));
     document.getElementById("ata-sugestoes").addEventListener("click", (event) => {
+      const projetoBtn = event.target.closest("button[data-add-projeto]");
+      if (projetoBtn) {
+        const projeto = Comite.projetos().find((item) => item.id === projetoBtn.dataset.addProjeto);
+        if (!projeto) return;
+        addProjeto(projeto, Comite.meeting().checks.get(projeto.id));
+        saveDraft();
+        renderItems();
+        document.getElementById("ata-busca").value = "";
+        suggestions("");
+        return;
+      }
       const button = event.target.closest("button[data-add]");
       if (!button) return;
       const row = state.rows.find((item) => item.id === button.dataset.add);
@@ -817,12 +936,13 @@ const Ata = (() => {
     });
 
     document.getElementById("ata-new").addEventListener("click", () => {
-      draft = emptyDraft();
+      draft = emptyDraft(draft.tipo);
       editando = true;
       pedindoToken = false;
       pendenteExcluir = null;
       saveDraft();
       fillMeta();
+      aplicarTipo();
       renderItems();
       loadList();
     });
@@ -868,9 +988,10 @@ const Ata = (() => {
     if (sessionStorage.getItem(returnKey) || vista === "ata") {
       sessionStorage.removeItem(returnKey);
       show("ata");
-    } else if (vista === "frequencia") {
-      show("frequencia");
+    } else if (vista === "frequencia" || vista === "comite") {
+      show(vista);
     } else {
+      aplicarTipo();
       fillMeta();
     }
   }
@@ -878,6 +999,7 @@ const Ata = (() => {
   document.addEventListener("DOMContentLoaded", boot);
   return {
     show,
+    api,
     atualizarHorarios() {
       const duracao = document.getElementById("ata-duracao");
       if (duracao) duracao.value = currentDuration() || "Reunião não iniciada";
