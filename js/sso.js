@@ -19,6 +19,7 @@ const SSO = (() => {
         post_logout_redirect_uri: base,
         response_type: "code",
         scope: "openid profile email",
+        loadUserInfo: true,
         userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
       })
     : null;
@@ -31,9 +32,38 @@ const SSO = (() => {
     document.getElementById("auth-retry").hidden = !canRetry;
   }
 
+  /** Nome para tela e para a lista da ata. */
+  function displayName(user = current) {
+    const profile = user?.profile || {};
+    return (
+      profile.name ||
+      [profile.given_name, profile.family_name].filter(Boolean).join(" ").trim() ||
+      profile.preferred_username ||
+      profile.email ||
+      ""
+    );
+  }
+
+  async function enrich(user) {
+    if (!user) return null;
+    if (displayName(user)) return user;
+    if (!user.access_token) return user;
+    try {
+      const response = await fetch(`${sso}/connect/userinfo`, {
+        headers: { Authorization: `Bearer ${user.access_token}` },
+      });
+      if (!response.ok) return user;
+      const info = await response.json();
+      user.profile = { ...(user.profile || {}), ...info };
+      await manager.storeUser(user);
+    } catch (error) {
+      /* sem userinfo, segue só com o que veio no token */
+    }
+    return user;
+  }
+
   function admit() {
-    const name = current.profile?.name || current.profile?.email || "";
-    document.getElementById("sso-user").textContent = name;
+    document.getElementById("sso-user").textContent = displayName();
     document.body.classList.add("is-authed");
   }
 
@@ -61,7 +91,7 @@ const SSO = (() => {
     const url = new URL(location.href);
     if (url.searchParams.has("code") || url.searchParams.has("error")) {
       try {
-        current = await manager.signinRedirectCallback();
+        current = await enrich(await manager.signinRedirectCallback());
         history.replaceState(null, "", url.pathname + ((current.state && current.state.hash) || ""));
       } catch (error) {
         history.replaceState(null, "", url.pathname);
@@ -75,7 +105,7 @@ const SSO = (() => {
         return null;
       }
     } else {
-      current = await manager.getUser();
+      current = await enrich(await manager.getUser());
       if (!current || current.expired) return login();
     }
     admit();
@@ -106,5 +136,5 @@ const SSO = (() => {
     document.getElementById("btn-logout").addEventListener("click", sair);
   });
 
-  return { exigirLogin, login, sair, user };
+  return { exigirLogin, login, sair, user, displayName };
 })();

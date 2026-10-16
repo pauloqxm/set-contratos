@@ -54,11 +54,11 @@ O login protege a tela, não a planilha: quem tiver o link do CSV publicado aind
 
 A aba **Ata** grava no Supabase `ftuycoafwraxaachidlh`, usando o mesmo login do painel.
 
-O **Responsável** da ata é escolhido entre quem já entrou no painel pelo SSO: a cada acesso, a função `ata` registra o nome e o e-mail da pessoa em `ata_pessoas`. Quem foi liberado no SSO mas nunca abriu o painel só aparece na lista depois do primeiro acesso.
+O **Responsável** da ata é um campo de texto livre. Em ata nova, o site sugere o nome de quem está logado, se o SSO tiver informado; dá para editar à vontade.
 
 No Supabase, uma vez (e de novo sempre que estes arquivos mudarem):
 
-1. **SQL Editor**: rode [`supabase/ata.sql`](supabase/ata.sql). Ele cria `ata_reunioes`, `ata_itens` e `ata_pessoas`, fechadas para a chave publicável. Rodar de novo não apaga atas.
+1. **SQL Editor**: rode [`supabase/ata.sql`](supabase/ata.sql). Ele cria `ata_reunioes` e `ata_itens` (e colunas do responsável), fechadas para a chave publicável. Rodar de novo não apaga atas.
 2. **Edge Functions**: publique [`supabase/functions/ata/index.ts`](supabase/functions/ata/index.ts) com o nome `ata` e a verificação de JWT **desligada**. Quem confere o acesso é o token do SSO. Pela CLI:
 
    ```bash

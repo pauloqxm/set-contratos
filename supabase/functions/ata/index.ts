@@ -33,31 +33,17 @@ function json(req: Request, status: number, body: unknown): Response {
   });
 }
 
-type Usuario = { sub: string; nome: string; email: string };
-
-async function usuario(req: Request): Promise<Usuario | null> {
+async function usuario(req: Request): Promise<{ sub: string; nome: string } | null> {
   const token = req.headers.get("x-sso-token") ?? "";
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, audience: CLIENT_ID });
-    // O id_token do SSO costuma trazer só o sub; o nome e o e-mail vêm do profile no navegador.
-    const email = String(payload.email ?? req.headers.get("x-sso-email") ?? "").trim();
-    const nome = String(payload.name ?? req.headers.get("x-sso-name") ?? email).trim();
-    return { sub: String(payload.sub), nome, email };
+    const email = String(payload.email || req.headers.get("x-sso-email") || "").trim();
+    const nome = String(payload.name || req.headers.get("x-sso-name") || email).trim();
+    return { sub: String(payload.sub), nome };
   } catch {
     return null;
   }
-}
-
-async function registrar(user: Usuario): Promise<void> {
-  const row: Record<string, string> = {
-    sub: user.sub,
-    ultimo_acesso: new Date().toISOString(),
-  };
-  if (user.nome) row.nome = user.nome;
-  if (user.email) row.email = user.email;
-  // Não apaga nome/e-mail já gravados se esta chamada vier sem eles.
-  await db.from("ata_pessoas").upsert(row, { onConflict: "sub", ignoreDuplicates: false });
 }
 
 Deno.serve(async (req) => {
@@ -65,17 +51,9 @@ Deno.serve(async (req) => {
 
   const user = await usuario(req);
   if (!user) return json(req, 401, { erro: "Entre pelo SSO para usar a ata." });
-  await registrar(user);
 
   if (req.method === "GET") {
-    const params = new URL(req.url).searchParams;
-    if (params.has("pessoas")) {
-      const { data, error } = await db.from("ata_pessoas").select("sub, nome, email").order("nome");
-      if (error) return json(req, 500, { erro: error.message });
-      return json(req, 200, { pessoas: data });
-    }
-
-    const id = params.get("id");
+    const id = new URL(req.url).searchParams.get("id");
     if (!id) {
       const { data, error } = await db
         .from("ata_reunioes")

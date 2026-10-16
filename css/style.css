@@ -329,7 +329,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .ata-item textarea {
+.ata-meta input, .ata-search input, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
