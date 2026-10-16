@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=8" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -373,13 +373,6 @@
           </div>
         </header>
         <p id="ata-login-note" class="banner" role="status" hidden></p>
-        <div id="ata-editor" class="ata-editor" hidden>
-          <p id="ata-editor-nota" class="hint">Ata concluída. O token libera a edição ou a exclusão.</p>
-          <label id="ata-token-campo">Token de edição
-            <input id="ata-token" type="password" autocomplete="off" />
-          </label>
-          <button type="button" id="ata-token-ok" class="btn-ghost btn-small">Confirmar token</button>
-        </div>
         <details id="ata-salvas" class="ata-salvas">
           <summary>Atas salvas</summary>
           <ul id="ata-lista" class="ata-lista"></ul>
@@ -511,6 +504,27 @@
     </footer>
   </div>
 
+  <dialog id="ata-token-dialog" class="modal ata-token-dialog" aria-labelledby="ata-token-title">
+    <div class="modal-top">
+      <div>
+        <p class="eyebrow">Ata</p>
+        <h2 id="ata-token-title">Token de edição</h2>
+        <p id="ata-editor-nota" class="hint">Ata concluída. O token libera a edição ou a exclusão.</p>
+      </div>
+      <button type="button" id="ata-token-close" class="icon-btn" aria-label="Fechar">×</button>
+    </div>
+    <form id="ata-token-form" class="ata-token-form">
+      <label id="ata-token-campo">Token
+        <input id="ata-token" type="password" autocomplete="off" />
+      </label>
+      <p id="ata-token-erro" class="banner is-error" hidden></p>
+      <div class="ata-token-actions">
+        <button type="button" id="ata-token-cancel" class="btn-ghost btn-small">Cancelar</button>
+        <button type="submit" id="ata-token-ok" class="btn-run btn-small">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="modal" class="modal" aria-labelledby="modal-title">
     <div class="modal-top">
       <div>
@@ -537,6 +551,6 @@
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/frequencia.js"></script>
-  <script defer src="js/ata.js?v=8"></script>
+  <script defer src="js/ata.js?v=9"></script>
 </body>
 </html>

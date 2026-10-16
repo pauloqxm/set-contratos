@@ -138,6 +138,7 @@ const Ata = (() => {
       }
     });
     toggleMenu(false);
+    if (view !== "ata") esquecerToken();
     if (view === "ata") {
       fillMeta();
       renderItems();
@@ -238,19 +239,35 @@ const Ata = (() => {
     return Boolean(draft.id) && !editando;
   }
 
+  function erroToken(texto) {
+    const erro = document.getElementById("ata-token-erro");
+    if (!erro) return;
+    erro.hidden = !texto;
+    erro.textContent = texto || "";
+  }
+
+  function fecharToken() {
+    pedindoToken = false;
+    pendenteExcluir = null;
+    const dialog = document.getElementById("ata-token-dialog");
+    if (dialog?.open) dialog.close();
+    erroToken("");
+  }
+
+  function esquecerToken() {
+    sessionStorage.removeItem(tokenKey);
+    editando = false;
+    fecharToken();
+  }
+
   function aplicarTrava() {
-    const bar = document.getElementById("ata-editor");
-    if (!bar) return;
     const salva = Boolean(draft.id);
     const trava = travada();
     document.getElementById("ata-edit").hidden = !trava;
     document.getElementById("ata-delete").hidden = !salva;
     document.getElementById("ata-save").hidden = trava;
     document.getElementById("ata-save").disabled = false;
-    bar.hidden = !pedindoToken;
-    document.getElementById("ata-editor-nota").textContent = pendenteExcluir
-      ? "Informe o token para excluir a ata."
-      : "Ata concluída. O token libera a edição.";
+    if (!pedindoToken) fecharToken();
     ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca"].forEach((id) => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
@@ -263,8 +280,15 @@ const Ata = (() => {
   function pedirToken(excluirId) {
     pendenteExcluir = excluirId || null;
     pedindoToken = true;
-    aplicarTrava();
-    document.getElementById("ata-token").focus();
+    document.getElementById("ata-editor-nota").textContent = pendenteExcluir
+      ? "Informe o token para excluir a ata."
+      : "Informe o token para editar a ata.";
+    erroToken("");
+    const campo = document.getElementById("ata-token");
+    campo.value = "";
+    const dialog = document.getElementById("ata-token-dialog");
+    if (!dialog.open) dialog.showModal();
+    campo.focus();
   }
 
   function readParticipantes() {
@@ -492,10 +516,11 @@ const Ata = (() => {
     }
   }
 
-  async function liberarEdicao() {
+  async function liberarEdicao(event) {
+    event?.preventDefault();
     const token = document.getElementById("ata-token").value.trim();
     if (!token) {
-      note("Informe o token de edição.", true);
+      erroToken("Informe o token de edição.");
       return;
     }
     let response;
@@ -505,11 +530,11 @@ const Ata = (() => {
         headers: { "x-ata-token": token },
       });
     } catch (error) {
-      note("Não foi possível confirmar o token de edição.", true);
+      erroToken("Não foi possível confirmar o token de edição.");
       return;
     }
     if (!response.ok) {
-      note(response.status === 404 ? "O token de edição só funciona no site publicado." : "O token de edição não confere.", true);
+      erroToken(response.status === 404 ? "O token de edição só funciona no site publicado." : "O token de edição não confere.");
       return;
     }
     sessionStorage.setItem(tokenKey, token);
@@ -517,6 +542,7 @@ const Ata = (() => {
     const alvo = pendenteExcluir;
     pendenteExcluir = null;
     pedindoToken = false;
+    fecharToken();
     if (alvo) {
       aplicarTrava();
       return excluir(alvo);
@@ -826,11 +852,17 @@ const Ata = (() => {
     document.getElementById("ata-save").addEventListener("click", save);
     document.getElementById("ata-edit").addEventListener("click", pedirEdicao);
     document.getElementById("ata-delete").addEventListener("click", () => pedirExclusao());
-    document.getElementById("ata-token-ok").addEventListener("click", liberarEdicao);
-    document.getElementById("ata-token").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") liberarEdicao();
+    document.getElementById("ata-token-form").addEventListener("submit", liberarEdicao);
+    document.getElementById("ata-token-cancel").addEventListener("click", fecharToken);
+    document.getElementById("ata-token-close").addEventListener("click", fecharToken);
+    const tokenDialog = document.getElementById("ata-token-dialog");
+    tokenDialog.addEventListener("cancel", () => {
+      pedindoToken = false;
+      pendenteExcluir = null;
     });
-    document.getElementById("ata-delete").addEventListener("click", excluir);
+    tokenDialog.addEventListener("click", (event) => {
+      if (event.target === tokenDialog) fecharToken();
+    });
 
     const vista = sessionStorage.getItem("set-vista");
     sessionStorage.removeItem("set-vista");

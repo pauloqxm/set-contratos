@@ -314,24 +314,24 @@ h1 {
 
 .ata-head h2 { margin: 0; }
 
-.ata-actions, .ata-tools, .ata-editor { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.ata-actions, .ata-tools { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 
-.ata-editor {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--white);
-}
-
-.ata-editor[hidden],
 #ata-edit[hidden],
 #ata-delete[hidden],
 #ata-save[hidden] { display: none !important; }
 
-.ata-editor .hint { flex: 1 1 100%; margin: 0; }
+.ata-token-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
 
-.ata-editor label { min-width: 220px; }
+.ata-token-form label { min-width: 0; }
+
+.ata-token-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.ata-token-form .banner { margin-top: 0; }
 
 .ata-meta input:disabled, .ata-item textarea:disabled {
   background: #f4f5f5;
@@ -346,7 +346,7 @@ h1 {
   margin-top: 14px;
 }
 
-.ata-meta label, .ata-search, .ata-editor label {
+.ata-meta label, .ata-search, .ata-token-form label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -357,7 +357,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .ata-editor input, .freq-bar select, .freq-bar input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .ata-token-form input, .freq-bar select, .freq-bar input, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -1726,7 +1726,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-salvas,
   body.printing-ata .ata-item .linkish,
   body.printing-ata #ata-presenca-recente,
-  body.printing-ata #ata-editor,
+  body.printing-ata #ata-token-dialog,
   body.printing-ata .ata-meta input,
   body.printing-ata .ata-item textarea { display: none !important; }
   body.printing-ata,
