@@ -338,7 +338,7 @@ const Frequencia = (() => {
       .map(([data]) => {
         const registro = (records || []).find((item) => item.data === data && norm(item.nome) === pessoa);
         const extra = registro?.hora ? `<span>${esc(registro.hora)}</span>` : "";
-        return `<li><button type="button" data-data="${esc(data)}"><strong>${labelData(data)}</strong>${extra}</button></li>`;
+        return `<li><button type="button" data-data="${esc(data)}"><span class="freq-ok" aria-hidden="true"></span><span class="freq-nome"><strong>${labelData(data)}</strong>${extra}</span></button></li>`;
       })
       .join("");
   }
@@ -372,7 +372,7 @@ const Frequencia = (() => {
     list.innerHTML = people
       .map((item) => {
         const extra = [item.email, item.hora].filter(Boolean).join(" · ");
-        return `<li><strong>${esc(item.nome)}</strong>${extra ? `<span>${esc(extra)}</span>` : ""}</li>`;
+        return `<li><span class="freq-ok" aria-hidden="true"></span><span class="freq-nome"><strong>${esc(item.nome)}</strong>${extra ? `<span>${esc(extra)}</span>` : ""}</span></li>`;
       })
       .join("");
     note("");
