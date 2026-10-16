@@ -405,10 +405,62 @@
     </section>
 
     <section id="view-frequencia" class="view-frequencia" hidden>
+      <div class="freq-kpis">
+        <article class="kpi-block">
+          <span class="kpi-label">Reuniões</span>
+          <strong class="kpi-figure" id="freq-kpi-reunioes">—</strong>
+          <span class="kpi-meta" id="freq-kpi-reunioes-meta">Últimos 30 dias</span>
+        </article>
+        <article class="kpi-block">
+          <span class="kpi-label">Média por reunião</span>
+          <strong class="kpi-figure" id="freq-kpi-media">—</strong>
+          <span class="kpi-meta" id="freq-kpi-media-meta">Pessoas nos últimos 30 dias</span>
+        </article>
+        <article class="kpi-block">
+          <span class="kpi-label">Pessoas distintas</span>
+          <strong class="kpi-figure" id="freq-kpi-distintas">—</strong>
+          <span class="kpi-meta" id="freq-kpi-distintas-meta">Quem veio ao menos uma vez</span>
+        </article>
+      </div>
+
+      <div class="panel freq-sheet">
+        <div class="card-head">
+          <h2>Participantes nas últimas sete reuniões</h2>
+          <p class="hint">Cada barra é o total de pessoas daquele dia. Clique para abrir a lista.</p>
+        </div>
+        <p id="freq-chart-vazio" class="hint" hidden>Ainda não há reuniões para o gráfico.</p>
+        <div class="canvas-box">
+          <canvas id="freq-chart" aria-label="Total de participantes nas últimas sete reuniões"></canvas>
+        </div>
+      </div>
+
+      <div class="panel freq-sheet">
+        <div class="card-head">
+          <h2>Presença por pessoa</h2>
+          <p class="hint">Escolha um nome. Sem datas, o período é os últimos 60 dias.</p>
+        </div>
+        <div class="freq-bar">
+          <label class="freq-pessoa-campo">Nome
+            <input id="freq-pessoa-busca" type="search" placeholder="Filtrar nomes" autocomplete="off" />
+            <select id="freq-pessoa">
+              <option value="">Escolha a pessoa</option>
+            </select>
+          </label>
+          <label>De
+            <input id="freq-de" type="date" />
+          </label>
+          <label>Até
+            <input id="freq-ate" type="date" />
+          </label>
+        </div>
+        <p id="freq-pessoa-resumo" class="hint">Escolha uma pessoa para ver as reuniões.</p>
+        <ul id="freq-pessoa-lista" class="freq-lista"></ul>
+      </div>
+
       <div class="panel freq-sheet">
         <header class="ata-head">
           <div>
-            <h2>Frequência</h2>
+            <h2>Frequência do dia</h2>
             <p class="hint">Presenças confirmadas na planilha do Comitê Executivo. A ata usa esta lista na data da reunião.</p>
           </div>
           <button type="button" id="freq-refresh" class="btn-ghost btn-small">Atualizar</button>

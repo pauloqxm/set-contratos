@@ -60,7 +60,7 @@ Os **participantes** vêm da aba **Frequência**: na data da ata, a lista é que
 
 ## Frequência
 
-A aba **Frequência** lê a planilha publicada de presença (`frequenciaCsvUrl` em [`js/config.js`](js/config.js)). O filtro escolhe a data da reunião e mostra o total e os nomes, sem repetir quem registrou mais de uma vez no mesmo dia.
+A aba **Frequência** lê a planilha publicada de presença (`frequenciaCsvUrl` em [`js/config.js`](js/config.js)). O filtro escolhe a data da reunião e mostra o total e os nomes, sem repetir quem registrou mais de uma vez no mesmo dia. No topo, os indicadores dos últimos 30 dias: quantas reuniões houve, a média de pessoas por reunião e quantas pessoas diferentes apareceram. O gráfico mostra o total de participantes nas últimas sete reuniões. Em **Presença por pessoa**, um nome lista as reuniões dos últimos 60 dias; as datas **De** e **Até** trocam esse período.
 
 No Supabase, uma vez (e de novo sempre que estes arquivos mudarem):
 
