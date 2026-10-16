@@ -404,33 +404,25 @@ const Ata = (() => {
     saveDraft();
   }
 
-  function addRow(row, tempo) {
+  function addRow(row) {
     const key = itemKey(row);
-    const current = draft.itens.find((item) => item.key === key);
-    if (current) {
-      if (!current.tempo && tempo) current.tempo = stampText(tempo);
-      return false;
-    }
+    if (draft.itens.find((item) => item.key === key)) return false;
     draft.itens.push({
       key,
       nup: row.nup || "",
       contrato: row.contrato || "",
       contratada: row.contratada || "",
       objeto: row.objeto || "",
-      tempo: stampText(tempo),
+      tempo: "",
       texto: "",
     });
     return true;
   }
 
-  function addProjeto(projeto, tempo) {
+  function addProjeto(projeto) {
     const key = `p:${projeto.id}`;
-    const current = draft.itens.find((item) => item.key === key);
-    if (current) {
-      if (!current.tempo && tempo) current.tempo = stampText(tempo);
-      return false;
-    }
-    draft.itens.push({ key, ref: projeto.id, nup: "", contrato: "", contratada: "", objeto: projeto.nome || projeto.id, tempo: stampText(tempo), texto: "" });
+    if (draft.itens.find((item) => item.key === key)) return false;
+    draft.itens.push({ key, ref: projeto.id, nup: "", contrato: "", contratada: "", objeto: projeto.nome || projeto.id, tempo: "", texto: "" });
     return true;
   }
 
@@ -438,23 +430,44 @@ const Ata = (() => {
     return comite() ? Comite.meeting().checks : state.meeting.checks;
   }
 
+  function reuniaoAtual() {
+    return comite() ? Comite.meeting() : state.meeting;
+  }
+
+  function idDoItem(item) {
+    if (item.ref) return item.ref;
+    const row = state.rows.find((linha) => linha.id === item.key || linha.nup === item.key || itemKey(linha) === item.key);
+    return row?.id || item.key;
+  }
+
+  function tempoDoPonto(id) {
+    const atual = reuniaoAtual();
+    if (atual.currentId === id && atual.currentStartedAt) return Math.max(0, Date.now() - atual.currentStartedAt);
+    const stamp = atual.checks.get(id);
+    return typeof stamp === "number" ? stamp : null;
+  }
+
+  function aplicarTempos() {
+    draft.itens.forEach((item) => {
+      if (item.tempo) return;
+      const ms = tempoDoPonto(idDoItem(item));
+      if (ms != null) item.tempo = stampText(ms);
+    });
+  }
+
   function bringChecks() {
     let added = 0;
     if (comite()) {
-      Comite.meeting().checks.forEach((tempo, id) => {
-        if (tempo == null) return;
+      Comite.meeting().checks.forEach((_tempo, id) => {
         const projeto = Comite.projetos().find((item) => item.id === id);
-        if (projeto && addProjeto(projeto, tempo)) added += 1;
+        if (projeto && addProjeto(projeto)) added += 1;
       });
-      saveDraft();
-      renderItems();
-      return added;
+    } else {
+      state.meeting.checks.forEach((_tempo, id) => {
+        const row = state.rows.find((item) => item.id === id);
+        if (row && addRow(row)) added += 1;
+      });
     }
-    state.meeting.checks.forEach((tempo, id) => {
-      if (tempo == null) return;
-      const row = state.rows.find((item) => item.id === id);
-      if (row && addRow(row, tempo)) added += 1;
-    });
     saveDraft();
     renderItems();
     return added;
@@ -586,6 +599,8 @@ const Ata = (() => {
     }
     const button = document.getElementById("ata-save");
     button.disabled = true;
+    aplicarTempos();
+    renderItems();
     draft.duracao = currentDuration() || "";
     const horas = fillHorarios();
     draft.inicio = horas.inicio;
@@ -894,7 +909,7 @@ const Ata = (() => {
       if (projetoBtn) {
         const projeto = Comite.projetos().find((item) => item.id === projetoBtn.dataset.addProjeto);
         if (!projeto) return;
-        addProjeto(projeto, Comite.meeting().checks.get(projeto.id));
+        addProjeto(projeto);
         saveDraft();
         renderItems();
         document.getElementById("ata-busca").value = "";
@@ -905,7 +920,7 @@ const Ata = (() => {
       if (!button) return;
       const row = state.rows.find((item) => item.id === button.dataset.add);
       if (!row) return;
-      addRow(row, state.meeting.checks.get(row.id));
+      addRow(row);
       saveDraft();
       renderItems();
       document.getElementById("ata-busca").value = "";
