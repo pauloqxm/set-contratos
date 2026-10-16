@@ -321,6 +321,7 @@
         <div class="toolbar-actions">
           <div class="meeting" id="meeting">
             <button type="button" id="btn-meeting" class="btn-run btn-small" aria-pressed="false">Iniciar reunião</button>
+            <button type="button" id="btn-meeting-end" class="btn-ghost btn-small" hidden>Encerrar reunião</button>
             <span id="meeting-clock" class="meeting-clock">00:00:00</span>
             <span id="meeting-read" class="meeting-read">0 lidos</span>
           </div>
@@ -386,6 +387,14 @@
           <label>Responsável
             <input id="ata-responsavel" type="text" maxlength="160" placeholder="Nome de quem responde pela ata" />
             <span class="ata-print-value" data-print="ata-responsavel"></span>
+          </label>
+          <label title="Hora em que a reunião foi iniciada">Início
+            <input id="ata-inicio" type="text" readonly />
+            <span class="ata-print-value is-carimbo" data-print="ata-inicio"></span>
+          </label>
+          <label title="Hora em que a reunião foi encerrada">Fim
+            <input id="ata-fim" type="text" readonly />
+            <span class="ata-print-value is-carimbo" data-print="ata-fim"></span>
           </label>
           <label>Duração
             <input id="ata-duracao" type="text" readonly />

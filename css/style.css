@@ -314,7 +314,7 @@ h1 {
 
 .ata-meta {
   display: grid;
-  grid-template-columns: 1.4fr 0.7fr 1.2fr 0.7fr;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.85fr) minmax(0, 1.3fr) minmax(88px, 0.6fr) minmax(88px, 0.6fr) minmax(110px, 0.75fr);
   gap: 12px;
   margin-top: 14px;
 }
@@ -1709,7 +1709,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
     font-weight: 600;
     white-space: pre-wrap;
   }
-  body.printing-ata .ata-print-value.is-duracao {
+  body.printing-ata .ata-print-value.is-duracao,
+  body.printing-ata .ata-print-value.is-carimbo {
     background: #e8f7ea !important;
     border-color: #b7e0be;
     color: #2f9a3d;

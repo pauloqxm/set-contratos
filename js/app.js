@@ -35,7 +35,7 @@ const state = {
   pageSize: CONFIG.pageSize,
   printing: false,
   lastFocus: null,
-  meeting: { startedAt: null, timer: null, checks: new Map() },
+  meeting: { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map() },
 };
 
 const ui = {};
@@ -53,6 +53,7 @@ async function boot() {
   ui.refresh = document.getElementById("btn-refresh");
   ui.meeting = document.getElementById("meeting");
   ui.meetingBtn = document.getElementById("btn-meeting");
+  ui.meetingEnd = document.getElementById("btn-meeting-end");
   ui.clock = document.getElementById("meeting-clock");
   ui.meetingRead = document.getElementById("meeting-read");
   ui.modal = document.getElementById("modal");
@@ -69,6 +70,7 @@ async function boot() {
   ui.pageSize.value = String(state.pageSize);
   bindEvents();
   renderHead();
+  restoreMeeting();
   await reload();
 }
 
@@ -91,6 +93,7 @@ function emptyFilters() {
 function bindEvents() {
   ui.refresh.addEventListener("click", () => reload());
   ui.meetingBtn.addEventListener("click", startMeeting);
+  ui.meetingEnd.addEventListener("click", endMeeting);
   document.getElementById("btn-reset").addEventListener("click", resetFilters);
   document.getElementById("btn-csv").addEventListener("click", exportCsv);
   document.getElementById("btn-xlsx").addEventListener("click", exportXlsx);
@@ -196,7 +199,6 @@ function bindEvents() {
 }
 
 async function reload() {
-  resetMeeting();
   if (state.rows.length) renderTable(currentView());
   ui.refresh.disabled = true;
   ui.updated.textContent = "Atualizando a planilha…";
@@ -206,6 +208,7 @@ async function reload() {
   buildFilterOptions();
   render();
   showStatus(result);
+  paintMeeting();
   ui.refresh.disabled = false;
 }
 
@@ -790,26 +793,88 @@ function toggleRead(id, checked) {
   paintMeeting();
 }
 
+function horaRelogio(ms) {
+  return new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function saveMeeting() {
+  const { startedAt, endedAt, inicio, fim } = state.meeting;
+  if (!startedAt) {
+    sessionStorage.removeItem("set-reuniao");
+    return;
+  }
+  sessionStorage.setItem("set-reuniao", JSON.stringify({ startedAt, endedAt, inicio, fim }));
+}
+
+function restoreMeeting() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem("set-reuniao") || "null");
+    if (!saved || !saved.startedAt) return;
+    state.meeting.startedAt = saved.startedAt;
+    state.meeting.endedAt = saved.endedAt || null;
+    state.meeting.inicio = saved.inicio || horaRelogio(saved.startedAt);
+    state.meeting.fim = saved.fim || "";
+    if (!state.meeting.endedAt) {
+      state.meeting.timer = window.setInterval(() => {
+        ui.clock.textContent = formatDuration(meetingElapsed());
+      }, 250);
+    }
+    paintMeeting();
+  } catch (error) {
+    sessionStorage.removeItem("set-reuniao");
+  }
+}
+
+function avisarAta() {
+  if (typeof Ata !== "undefined" && Ata.atualizarHorarios) Ata.atualizarHorarios();
+}
+
 function startMeeting() {
-  if (state.meeting.startedAt) return;
-  state.meeting.startedAt = Date.now();
+  if (state.meeting.startedAt && !state.meeting.endedAt) return;
+  if (state.meeting.endedAt) {
+    state.meeting.checks = new Map();
+    if (state.rows.length) renderTable(currentView());
+  }
+  if (state.meeting.timer) window.clearInterval(state.meeting.timer);
+  const now = Date.now();
+  state.meeting.startedAt = now;
+  state.meeting.endedAt = null;
+  state.meeting.inicio = horaRelogio(now);
+  state.meeting.fim = "";
+  saveMeeting();
   paintMeeting();
   state.meeting.timer = window.setInterval(() => {
     ui.clock.textContent = formatDuration(meetingElapsed());
   }, 250);
+  avisarAta();
+}
+
+function endMeeting() {
+  if (!state.meeting.startedAt || state.meeting.endedAt) return;
+  state.meeting.endedAt = Date.now();
+  state.meeting.fim = horaRelogio(state.meeting.endedAt);
+  if (state.meeting.timer) window.clearInterval(state.meeting.timer);
+  state.meeting.timer = null;
+  saveMeeting();
+  paintMeeting();
+  avisarAta();
 }
 
 function resetMeeting() {
   if (state.meeting.timer) window.clearInterval(state.meeting.timer);
   state.meeting.startedAt = null;
+  state.meeting.endedAt = null;
+  state.meeting.inicio = "";
+  state.meeting.fim = "";
   state.meeting.timer = null;
   state.meeting.checks = new Map();
+  saveMeeting();
   if (ui.clock) paintMeeting();
 }
 
 function meetingElapsed() {
   if (!state.meeting.startedAt) return null;
-  return Date.now() - state.meeting.startedAt;
+  return (state.meeting.endedAt || Date.now()) - state.meeting.startedAt;
 }
 
 function formatDuration(ms) {
@@ -829,11 +894,12 @@ function paintMeeting() {
   ui.meetingRead.textContent = visible.length
     ? `${Data.formatNumber(read)} de ${Data.formatNumber(visible.length)} lidos`
     : "0 lidos";
-  const on = state.meeting.startedAt != null;
-  ui.meeting.classList.toggle("is-on", on);
+  const on = state.meeting.startedAt != null && !state.meeting.endedAt;
+  ui.meeting.classList.toggle("is-on", state.meeting.startedAt != null);
   ui.meetingBtn.textContent = on ? "Em andamento" : "Iniciar reunião";
   ui.meetingBtn.disabled = on;
   ui.meetingBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  if (ui.meetingEnd) ui.meetingEnd.hidden = !on;
 }
 
 function bindObjetoTip() {

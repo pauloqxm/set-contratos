@@ -18,6 +18,8 @@ const Ata = (() => {
       responsavel_nome: "",
       participantes: null,
       duracao: "",
+      inicio: "",
+      fim: "",
       itens: [],
     };
   }
@@ -224,7 +226,27 @@ const Ata = (() => {
       .join(", ");
   }
 
+  function horariosAtuais() {
+    const vivo = state.meeting.inicio && (!draft.id || draft.data === localISO());
+    if (vivo) return { inicio: state.meeting.inicio, fim: state.meeting.fim || "" };
+    return { inicio: draft.inicio || "", fim: draft.fim || "" };
+  }
+
+  function fillHorarios() {
+    const horas = horariosAtuais();
+    document.getElementById("ata-inicio").value = horas.inicio || "—";
+    document.getElementById("ata-fim").value = horas.fim || "—";
+    if (state.meeting.inicio && (!draft.id || draft.data === localISO())) {
+      draft.inicio = horas.inicio;
+      draft.fim = horas.fim;
+      saveDraft();
+    }
+    return horas;
+  }
+
   function currentDuration() {
+    const vivo = state.meeting.startedAt && (!draft.id || draft.data === localISO());
+    if (!vivo) return draft.duracao;
     const elapsed = meetingElapsed();
     return elapsed == null ? draft.duracao : formatDuration(elapsed);
   }
@@ -238,6 +260,7 @@ const Ata = (() => {
     document.getElementById("ata-data").value = draft.data;
     document.getElementById("ata-responsavel").value = draft.responsavel_nome;
     document.getElementById("ata-duracao").value = currentDuration() || "Reunião não iniciada";
+    fillHorarios();
     renderParticipantes();
   }
 
@@ -351,6 +374,8 @@ const Ata = (() => {
         responsavel_nome: ata.responsavel_nome || "",
         participantes: ata.participantes,
         duracao: ata.duracao,
+        inicio: ata.inicio || "",
+        fim: ata.fim || "",
         itens: ata.itens.map((item) => ({ ...item, key: item.nup || item.objeto })),
       };
       saveDraft();
@@ -377,6 +402,9 @@ const Ata = (() => {
     const button = document.getElementById("ata-save");
     button.disabled = true;
     draft.duracao = currentDuration() || "";
+    const horas = fillHorarios();
+    draft.inicio = horas.inicio;
+    draft.fim = horas.fim;
     try {
       const { id } = await api("POST", null, {
         id: draft.id,
@@ -385,6 +413,8 @@ const Ata = (() => {
         responsavel_nome: draft.responsavel_nome,
         participantes: draft.participantes || "",
         duracao: draft.duracao,
+        inicio: draft.inicio,
+        fim: draft.fim,
         itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
       });
       draft.id = id;
@@ -431,13 +461,13 @@ const Ata = (() => {
       .join("")}</w:tbl>`;
   }
 
-  function campo(rotulo, valor, fill, borda, valorCor, largura) {
+  function campo(rotulo, valor, fill, borda, valorCor, largura, span) {
     return celula(
       paragrafo(rotulo, { tamanho: "16", cor: "6D6E71", depois: "40" }) +
         paragrafo(valor || "—", { negrito: true, cor: valorCor || "4D4D4D", depois: "0" }),
       fill || "FFFFFF",
       borda,
-      null,
+      span,
       largura,
     );
   }
@@ -452,11 +482,15 @@ const Ata = (() => {
       paragrafo("Ata da reunião", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
       paragrafo("Descreva o que foi falado sobre cada objeto.", { tamanho: "18", cor: "6D6E71", depois: "160" }),
     ];
+    const horas = fillHorarios();
     const linhas = [[
       campo("TÍTULO", draft.titulo, "FFFFFF", "C8CACB", "4D4D4D", 3200),
       campo("DATA", dataBR(draft.data), "FFFFFF", "C8CACB", "4D4D4D", 1800),
       campo("RESPONSÁVEL", draft.responsavel_nome, "FFFFFF", "C8CACB", "4D4D4D", 3200),
       campo("DURAÇÃO", currentDuration() || draft.duracao, "E8F7EA", "B7E0BE", "2F9A3D", 2000),
+    ], [
+      campo("INÍCIO", horas.inicio, "E8F7EA", "B7E0BE", "2F9A3D", 5000, 2),
+      campo("FIM", horas.fim, "E8F7EA", "B7E0BE", "2F9A3D", 5200, 2),
     ], [
       celula(
         paragrafo("PARTICIPANTES", { tamanho: "16", cor: "6D6E71", depois: "60" }) +
@@ -552,6 +586,7 @@ const Ata = (() => {
       const people = Frequencia.presentes(draft.data) || [];
       draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
       saveDraft();
+      fillHorarios();
       renderParticipantes();
     });
     document.getElementById("ata-participantes-lista").addEventListener("change", readMeta);
@@ -615,6 +650,7 @@ const Ata = (() => {
 
     document.getElementById("ata-print").addEventListener("click", () => {
       readMeta();
+      fillHorarios();
       document.querySelectorAll(".ata-print-value[data-print]").forEach((span) => {
         const field = document.getElementById(span.dataset.print);
         const value = field && field.value;
@@ -645,5 +681,12 @@ const Ata = (() => {
   }
 
   document.addEventListener("DOMContentLoaded", boot);
-  return { show };
+  return {
+    show,
+    atualizarHorarios() {
+      const duracao = document.getElementById("ata-duracao");
+      if (duracao) duracao.value = currentDuration() || "Reunião não iniciada";
+      fillHorarios();
+    },
+  };
 })();

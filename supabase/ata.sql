@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS public.ata_itens (
 
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_sub TEXT;
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_nome TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS inicio TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS fim TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_data ON public.ata_reunioes(data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_itens_reuniao ON public.ata_itens(reuniao_id, ordem);
@@ -53,7 +55,7 @@ DECLARE
     v_resp_nome TEXT := COALESCE(NULLIF(TRIM(p_ata->>'responsavel_nome'), ''), '');
 BEGIN
     IF v_id IS NULL THEN
-        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_nome)
+        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_nome, inicio, fim)
         VALUES (
             p_ata->>'titulo',
             (p_ata->>'data')::DATE,
@@ -61,7 +63,9 @@ BEGIN
             COALESCE(p_ata->>'duracao', ''),
             p_autor_sub,
             COALESCE(p_autor_nome, ''),
-            v_resp_nome
+            v_resp_nome,
+            COALESCE(p_ata->>'inicio', ''),
+            COALESCE(p_ata->>'fim', '')
         )
         RETURNING id INTO v_id;
     ELSE
@@ -70,6 +74,8 @@ BEGIN
             data = (p_ata->>'data')::DATE,
             participantes = COALESCE(p_ata->>'participantes', ''),
             duracao = COALESCE(p_ata->>'duracao', ''),
+            inicio = COALESCE(p_ata->>'inicio', ''),
+            fim = COALESCE(p_ata->>'fim', ''),
             responsavel_nome = v_resp_nome,
             atualizada_em = now()
         WHERE id = v_id;
