@@ -95,7 +95,7 @@ async function pautaComite(req: Request): Promise<Response> {
   const { data: itens, error: itensError } = ids.length
     ? await db
       .from("itens")
-      .select("id, projeto_id, frente, entrega, responsavel, parceiros, prioridade, prazo, prazo_hora, status, proxima, obs, nup")
+      .select("id, projeto_id, frente, entrega, responsavel, parceiros, prioridade, prazo, prazo_hora, status, proxima, obs, nup, atualizado_em")
       .in("projeto_id", ids)
     : { data: [], error: null };
   if (itensError) return json(req, 500, { erro: itensError.message });

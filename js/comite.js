@@ -27,6 +27,23 @@ const Comite = (() => {
     return `${day}/${month}/${year}`;
   }
 
+  function dataHora(iso) {
+    if (!iso) return "—";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return dataBR(iso);
+    return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function pautaPorFrente(itens) {
+    const grupos = new Map();
+    itens.forEach((item) => {
+      const frente = String(item.frente || "").trim() || "Sem frente";
+      const atual = grupos.get(frente);
+      if (!atual || String(item.atualizado_em || "") > String(atual.atualizado_em || "")) grupos.set(frente, item);
+    });
+    return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+  }
+
   function note(text, isError) {
     const element = document.getElementById("comite-note");
     element.hidden = !text;
@@ -150,12 +167,13 @@ const Comite = (() => {
     const status = String(item.status || "").trim();
     const prioridade = String(item.prioridade || "").trim();
     return `<tr class="${vencido ? "is-late" : ""}">
-      <td><span class="ata-kicker">${esc(item.frente || "")}</span>${esc(item.entrega || "")}</td>
+      <td>${esc(item.entrega || "")}</td>
       <td>${esc(item.responsavel || "—")}</td>
       <td class="comite-prazo">${esc(prazo)}${vencido ? ' <span class="badge badge-danger">Vencido</span>' : ""}</td>
       <td>${status ? `<span class="badge ${statusTom[status] || "badge-muted"}">${esc(status)}</span>` : "—"}</td>
       <td>${prioridade ? `<span class="badge ${prioridadeTom[prioridade] || "badge-muted"}">${esc(prioridade)}</span>` : "—"}</td>
       <td>${esc(item.proxima || "")}</td>
+      <td class="comite-atualizado">${esc(dataHora(item.atualizado_em))}</td>
     </tr>`;
   }
 
@@ -165,10 +183,13 @@ const Comite = (() => {
     const tempo = !marcado ? "" : stamp == null ? "discutido" : formatDuration(stamp);
     const vencidos = projeto.itens.filter((item) => item.prazo && String(item.prazo).slice(0, 10) < dia).length;
     const prazo = projeto.prazo_conclusao ? `Conclusão prevista: ${dataBR(projeto.prazo_conclusao)}` : "";
-    const corpo = projeto.itens.length
+    const pauta = pautaPorFrente(projeto.itens);
+    const corpo = pauta.length
       ? `<div class="comite-tabela"><table>
-          <thead><tr><th>Entrega</th><th>Responsável</th><th>Prazo</th><th>Status</th><th>Prioridade</th><th>Próxima ação</th></tr></thead>
-          <tbody>${projeto.itens.map((item) => itemHtml(item, dia)).join("")}</tbody>
+          <thead><tr><th>Entrega</th><th>Responsável</th><th>Prazo</th><th>Status</th><th>Prioridade</th><th>Próxima ação</th><th>Atualizado</th></tr></thead>
+          <tbody>${pauta
+            .map(([frente, item]) => `<tr class="comite-frente"><td colspan="7">${esc(frente)}</td></tr>${itemHtml(item, dia)}`)
+            .join("")}</tbody>
         </table></div>`
       : '<p class="hint">Nenhum item em aberto.</p>';
     const recolhido = recolhidos.has(projeto.id);

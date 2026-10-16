@@ -405,6 +405,19 @@ h1 {
 
 .comite-tabela td:nth-child(6) { min-width: 200px; color: var(--ink-soft); }
 
+.comite-tabela .comite-frente td {
+  background: #f4f7fb;
+  border-bottom: 0;
+  padding-top: 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--blue);
+}
+
+.comite-atualizado { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
 .comite-prazo { white-space: nowrap; }
 
 .comite-tabela tr.is-late .comite-prazo { color: var(--danger); font-weight: 700; }
