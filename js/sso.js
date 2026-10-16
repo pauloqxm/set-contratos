@@ -2,7 +2,6 @@
 const SSO = (() => {
   const base = `${location.origin}/`;
   const sso = CONFIG.ssoAuthority;
-  const inFrame = window.self !== window.top;
   const manager = window.oidc && CONFIG.ssoClientId
     ? new oidc.UserManager({
         authority: sso,
@@ -17,24 +16,21 @@ const SSO = (() => {
         },
         client_id: CONFIG.ssoClientId,
         redirect_uri: base,
-        silent_redirect_uri: base,
         post_logout_redirect_uri: base,
         response_type: "code",
-        scope: "openid profile email offline_access",
+        scope: "openid profile email",
         loadUserInfo: true,
-        automaticSilentRenew: !inFrame,
         userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
       })
     : null;
-  if (inFrame && manager) {
-    manager.signinSilentCallback().catch(() => {});
-  }
   let current = null;
   let pending = null;
   let forceLogin = false;
+  let renovando = false;
   const idleMs = 30 * 60 * 1000;
   const idleKey = "set-sso-atividade";
   let idleTimer = 0;
+  let renewTimer = 0;
   let idleOn = false;
   let lastMark = 0;
 
@@ -78,24 +74,37 @@ const SSO = (() => {
     return !sessionStorage.getItem(idleKey) || idleAge() < idleMs;
   }
 
+  function lembrarVista() {
+    const ata = document.getElementById("view-ata");
+    const freq = document.getElementById("view-frequencia");
+    const view = ata && !ata.hidden ? "ata" : freq && !freq.hidden ? "frequencia" : "painel";
+    sessionStorage.setItem("set-vista", view);
+    if (view === "ata") sessionStorage.setItem("set-ata-voltar", "1");
+  }
+
+  function programarRenovacao() {
+    clearTimeout(renewTimer);
+    if (!current?.expires_at || !ativo()) return;
+    const wait = current.expires_at * 1000 - Date.now() - 60000;
+    renewTimer = setTimeout(() => {
+      if (ativo()) renovar();
+    }, Math.max(0, wait));
+  }
+
   function admit() {
     document.getElementById("sso-user").textContent = displayName();
     document.body.classList.add("is-authed");
     watchIdle();
+    programarRenovacao();
   }
 
-  /** Troca o token vencido se a pessoa ainda está usando o painel. */
-  async function renovar() {
-    if (!manager || !ativo()) return false;
-    try {
-      current = await enrich(await manager.signinSilent());
-      return Boolean(current && !current.expired);
-    } catch (error) {
-      if (!ativo() || forceLogin) return false;
-      if (!document.getElementById("view-ata").hidden) sessionStorage.setItem("set-ata-voltar", "1");
-      login();
-      return false;
-    }
+  /** Pede um token novo ao SSO se a pessoa ainda está usando o painel. */
+  function renovar() {
+    if (!manager || !ativo() || renovando || forceLogin) return false;
+    renovando = true;
+    lembrarVista();
+    login();
+    return false;
   }
 
   function idleAge() {
@@ -133,6 +142,7 @@ const SSO = (() => {
     }
     idleOn = false;
     clearTimeout(idleTimer);
+    clearTimeout(renewTimer);
     if (!document.getElementById("view-ata").hidden) sessionStorage.setItem("set-ata-voltar", "1");
     current = null;
     forceLogin = true;
@@ -207,13 +217,7 @@ const SSO = (() => {
         gate("A sessão encerrou após 30 minutos sem atividade no teclado ou no mouse.", true);
         return null;
       }
-      if (current?.expired && ativo()) {
-        try {
-          current = await enrich(await manager.signinSilent());
-        } catch (error) {
-          return login();
-        }
-      }
+      if (current?.expired && ativo()) return renovar();
       if (!current || current.expired) return login();
     }
     admit();
@@ -222,7 +226,6 @@ const SSO = (() => {
 
   /** Garante login. Devolve o usuário, ou null se foi para o SSO ou não tem acesso. */
   function exigirLogin() {
-    if (inFrame) return Promise.resolve(null);
     if (!pending) pending = run();
     return pending;
   }
@@ -234,6 +237,7 @@ const SSO = (() => {
   async function sair() {
     idleOn = false;
     clearTimeout(idleTimer);
+    clearTimeout(renewTimer);
     sessionStorage.removeItem(idleKey);
     try {
       await manager.signoutRedirect();
@@ -252,13 +256,12 @@ const SSO = (() => {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible" || !idleOn) return;
       if (!ativo()) idleOut();
-      else armIdle();
+      else {
+        armIdle();
+        if (current?.expired) renovar();
+        else programarRenovacao();
+      }
     });
-    if (manager) {
-      manager.events.addUserLoaded((user) => {
-        current = user;
-      });
-    }
   });
 
   return { exigirLogin, login, sair, renovar, user, displayName };

@@ -459,9 +459,13 @@ const Ata = (() => {
 
     document.getElementById("ata-save").addEventListener("click", save);
 
-    if (sessionStorage.getItem(returnKey)) {
+    const vista = sessionStorage.getItem("set-vista");
+    sessionStorage.removeItem("set-vista");
+    if (sessionStorage.getItem(returnKey) || vista === "ata") {
       sessionStorage.removeItem(returnKey);
       show("ata");
+    } else if (vista === "frequencia") {
+      show("frequencia");
     } else {
       fillMeta();
     }
