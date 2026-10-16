@@ -4,6 +4,7 @@ const Ata = (() => {
   const returnKey = "set-ata-voltar";
   let draft = loadDraft();
   let expired = false;
+  let pessoas;
 
   function emptyDraft() {
     const today = new Date();
@@ -11,6 +12,8 @@ const Ata = (() => {
       id: null,
       titulo: `Reunião de contratos ${today.toLocaleDateString("pt-BR")}`,
       data: today.toISOString().slice(0, 10),
+      responsavel_sub: "",
+      responsavel_nome: "",
       participantes: "",
       duracao: "",
       itens: [],
@@ -106,7 +109,44 @@ const Ata = (() => {
       fillMeta();
       renderItems();
       loadList();
+      if (!pessoas) loadPessoas();
     }
+  }
+
+  async function loadPessoas() {
+    try {
+      const data = await api("GET", { pessoas: "1" });
+      pessoas = Array.isArray(data.pessoas) ? data.pessoas : null;
+    } catch (error) {
+      pessoas = null;
+    }
+    renderPessoas();
+  }
+
+  function renderPessoas() {
+    const select = document.getElementById("ata-responsavel");
+    if (!pessoas) {
+      select.innerHTML = `<option value="">${pessoas === undefined ? "Carregando…" : "Lista indisponível"}</option>`;
+      select.disabled = true;
+      return;
+    }
+    if (!draft.id && !draft.responsavel_sub) {
+      const me = pessoas.find((pessoa) => pessoa.sub === SSO.user()?.profile?.sub);
+      if (me) {
+        draft.responsavel_sub = me.sub;
+        draft.responsavel_nome = me.nome;
+        saveDraft();
+      }
+    }
+    const options = pessoas.map((pessoa) => ({ sub: pessoa.sub, nome: pessoa.nome || pessoa.email }));
+    if (draft.responsavel_sub && !options.some((pessoa) => pessoa.sub === draft.responsavel_sub)) {
+      options.push({ sub: draft.responsavel_sub, nome: draft.responsavel_nome || "Pessoa sem acesso registrado" });
+    }
+    select.innerHTML = ['<option value="">Escolha o responsável</option>']
+      .concat(options.map((pessoa) => `<option value="${esc(pessoa.sub)}">${esc(pessoa.nome)}</option>`))
+      .join("");
+    select.disabled = false;
+    select.value = draft.responsavel_sub || "";
   }
 
   function currentDuration() {
@@ -119,6 +159,7 @@ const Ata = (() => {
     document.getElementById("ata-data").value = draft.data;
     document.getElementById("ata-participantes").value = draft.participantes;
     document.getElementById("ata-duracao").value = currentDuration() || "Reunião não iniciada";
+    renderPessoas();
   }
 
   function readMeta() {
@@ -208,7 +249,8 @@ const Ata = (() => {
             .map((ata) => {
               const when = ata.data ? new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR") : "";
               const current = ata.id === draft.id ? " is-on" : "";
-              return `<li><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(ata.autor_nome || "")}</span></button></li>`;
+              const who = ata.responsavel_nome ? `Responsável: ${ata.responsavel_nome}` : ata.autor_nome || "";
+              return `<li><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button></li>`;
             })
             .join("")
         : '<li class="hint">Nenhuma ata salva ainda.</li>';
@@ -225,6 +267,8 @@ const Ata = (() => {
         id: ata.id,
         titulo: ata.titulo,
         data: ata.data,
+        responsavel_sub: ata.responsavel_sub || "",
+        responsavel_nome: ata.responsavel_nome || "",
         participantes: ata.participantes,
         duracao: ata.duracao,
         itens: ata.itens.map((item) => ({ ...item, key: item.nup || item.objeto })),
@@ -246,6 +290,10 @@ const Ata = (() => {
       note("Informe o título e a data da reunião.", true);
       return;
     }
+    if (pessoas && !draft.responsavel_sub) {
+      note("Escolha o responsável pela ata.", true);
+      return;
+    }
     const button = document.getElementById("ata-save");
     button.disabled = true;
     draft.duracao = currentDuration() || "";
@@ -254,6 +302,7 @@ const Ata = (() => {
         id: draft.id,
         titulo: draft.titulo,
         data: draft.data,
+        responsavel_sub: draft.responsavel_sub,
         participantes: draft.participantes,
         duracao: draft.duracao,
         itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
@@ -287,6 +336,12 @@ const Ata = (() => {
 
     ["ata-titulo", "ata-data", "ata-participantes"].forEach((id) => {
       document.getElementById(id).addEventListener("input", readMeta);
+    });
+    document.getElementById("ata-responsavel").addEventListener("change", (event) => {
+      const select = event.target;
+      draft.responsavel_sub = select.value;
+      draft.responsavel_nome = select.value ? select.selectedOptions[0].textContent : "";
+      saveDraft();
     });
 
     document.getElementById("ata-from-checks").addEventListener("click", () => {
@@ -353,6 +408,7 @@ const Ata = (() => {
       show("ata");
     } else {
       fillMeta();
+      loadPessoas();
     }
   }
 

@@ -2,7 +2,7 @@
 -- Executar no Supabase: SQL Editor → New query → Run
 -- Projeto: ftuycoafwraxaachidlh
 --
--- Não mexe nas tabelas do SET Projetos. Reexecutar é seguro.
+-- Não mexe nas tabelas do SET Projetos. Reexecutar é seguro e não apaga atas.
 -- RLS ligado e sem políticas: a chave publicável não lê nem grava aqui.
 -- Só a função "ata" (Edge Function, com a chave de serviço) acessa as tabelas.
 
@@ -30,15 +30,29 @@ CREATE TABLE IF NOT EXISTS public.ata_itens (
     texto TEXT NOT NULL DEFAULT ''
 );
 
+-- Quem já entrou no painel pelo SSO. A função "ata" atualiza a cada acesso.
+CREATE TABLE IF NOT EXISTS public.ata_pessoas (
+    sub TEXT PRIMARY KEY,
+    nome TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    primeiro_acesso TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ultimo_acesso TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_sub TEXT;
+ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_nome TEXT NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_data ON public.ata_reunioes(data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_itens_reuniao ON public.ata_itens(reuniao_id, ordem);
 
 ALTER TABLE public.ata_reunioes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ata_itens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ata_pessoas ENABLE ROW LEVEL SECURITY;
 
-REVOKE ALL ON public.ata_reunioes, public.ata_itens FROM anon, authenticated;
+REVOKE ALL ON public.ata_reunioes, public.ata_itens, public.ata_pessoas FROM anon, authenticated;
 
 -- Grava a ata e os itens numa transação só. Ao editar, os itens são substituídos.
+-- O responsável precisa estar em ata_pessoas; o nome gravado vem de lá.
 CREATE OR REPLACE FUNCTION public.ata_salvar(p_ata JSONB, p_autor_sub TEXT, p_autor_nome TEXT)
 RETURNS UUID
 LANGUAGE plpgsql
@@ -46,16 +60,27 @@ SET search_path = public
 AS $$
 DECLARE
     v_id UUID := NULLIF(p_ata->>'id', '')::UUID;
+    v_resp_sub TEXT := NULLIF(p_ata->>'responsavel_sub', '');
+    v_resp_nome TEXT := '';
 BEGIN
+    IF v_resp_sub IS NOT NULL THEN
+        SELECT nome INTO v_resp_nome FROM ata_pessoas WHERE sub = v_resp_sub;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Responsável não encontrado entre quem tem acesso';
+        END IF;
+    END IF;
+
     IF v_id IS NULL THEN
-        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome)
+        INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_sub, responsavel_nome)
         VALUES (
             p_ata->>'titulo',
             (p_ata->>'data')::DATE,
             COALESCE(p_ata->>'participantes', ''),
             COALESCE(p_ata->>'duracao', ''),
             p_autor_sub,
-            COALESCE(p_autor_nome, '')
+            COALESCE(p_autor_nome, ''),
+            v_resp_sub,
+            COALESCE(v_resp_nome, '')
         )
         RETURNING id INTO v_id;
     ELSE
@@ -64,6 +89,8 @@ BEGIN
             data = (p_ata->>'data')::DATE,
             participantes = COALESCE(p_ata->>'participantes', ''),
             duracao = COALESCE(p_ata->>'duracao', ''),
+            responsavel_sub = v_resp_sub,
+            responsavel_nome = COALESCE(v_resp_nome, ''),
             atualizada_em = now()
         WHERE id = v_id;
         IF NOT FOUND THEN

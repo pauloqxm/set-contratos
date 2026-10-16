@@ -33,15 +33,25 @@ function json(req: Request, status: number, body: unknown): Response {
   });
 }
 
-async function usuario(req: Request): Promise<{ sub: string; nome: string } | null> {
+type Usuario = { sub: string; nome: string; email: string };
+
+async function usuario(req: Request): Promise<Usuario | null> {
   const token = req.headers.get("x-sso-token") ?? "";
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, jwks, { issuer: ISSUER, audience: CLIENT_ID });
-    return { sub: String(payload.sub), nome: String(payload.name ?? payload.email ?? "") };
+    const email = String(payload.email ?? "");
+    return { sub: String(payload.sub), nome: String(payload.name ?? email), email };
   } catch {
     return null;
   }
+}
+
+async function registrar(user: Usuario): Promise<void> {
+  await db.from("ata_pessoas").upsert(
+    { sub: user.sub, nome: user.nome, email: user.email, ultimo_acesso: new Date().toISOString() },
+    { onConflict: "sub" },
+  );
 }
 
 Deno.serve(async (req) => {
@@ -49,13 +59,21 @@ Deno.serve(async (req) => {
 
   const user = await usuario(req);
   if (!user) return json(req, 401, { erro: "Entre pelo SSO para usar a ata." });
+  await registrar(user);
 
   if (req.method === "GET") {
-    const id = new URL(req.url).searchParams.get("id");
+    const params = new URL(req.url).searchParams;
+    if (params.has("pessoas")) {
+      const { data, error } = await db.from("ata_pessoas").select("sub, nome, email").order("nome");
+      if (error) return json(req, 500, { erro: error.message });
+      return json(req, 200, { pessoas: data });
+    }
+
+    const id = params.get("id");
     if (!id) {
       const { data, error } = await db
         .from("ata_reunioes")
-        .select("id, titulo, data, autor_nome, atualizada_em")
+        .select("id, titulo, data, autor_nome, responsavel_nome, atualizada_em")
         .order("data", { ascending: false })
         .order("atualizada_em", { ascending: false })
         .limit(50);
