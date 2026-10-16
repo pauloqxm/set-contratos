@@ -124,6 +124,11 @@ const Ata = (() => {
     return formatDuration(value);
   }
 
+  function nomeAta() {
+    const data = (dataBR(draft.data) || "").replaceAll("/", "-") || "sem-data";
+    return comite() ? `Ata da Reunião do Comitê ${data}` : `Ata da Reunião de Contratos ${data}`;
+  }
+
   function toggleMenu(open) {
     const list = document.getElementById("menu-list");
     const next = open ?? list.hidden;
@@ -839,7 +844,7 @@ const Ata = (() => {
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
     const link = document.createElement("a");
-    const nome = `ata-${ehComite ? "comite-" : ""}${draft.data || "reuniao"}.docx`;
+    const nome = `${nomeAta()}.docx`;
     link.href = URL.createObjectURL(blob);
     link.download = nome;
     link.click();
@@ -979,8 +984,13 @@ const Ata = (() => {
       const nomes = [...document.querySelectorAll("#ata-participantes-lista .freq-check")];
       nomes.forEach((label) => label.classList.remove("is-ultimo"));
       nomes.filter((label) => label.querySelector("input")?.checked).at(-1)?.classList.add("is-ultimo");
+      const titulo = document.title;
+      document.title = nomeAta();
       document.body.classList.add("printing-ata");
       window.print();
+      window.addEventListener("afterprint", () => {
+        document.title = titulo;
+      }, { once: true });
     });
     document.getElementById("ata-docx").addEventListener("click", baixarDocx);
     window.addEventListener("afterprint", () => document.body.classList.remove("printing-ata"));
