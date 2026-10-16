@@ -442,6 +442,7 @@ const Ata = (() => {
     let added = 0;
     if (comite()) {
       Comite.meeting().checks.forEach((tempo, id) => {
+        if (tempo == null) return;
         const projeto = Comite.projetos().find((item) => item.id === id);
         if (projeto && addProjeto(projeto, tempo)) added += 1;
       });
@@ -450,6 +451,7 @@ const Ata = (() => {
       return added;
     }
     state.meeting.checks.forEach((tempo, id) => {
+      if (tempo == null) return;
       const row = state.rows.find((item) => item.id === id);
       if (row && addRow(row, tempo)) added += 1;
     });

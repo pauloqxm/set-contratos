@@ -35,7 +35,7 @@ const state = {
   pageSize: CONFIG.pageSize,
   printing: false,
   lastFocus: null,
-  meeting: { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map() },
+  meeting: { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map(), currentId: null, currentStartedAt: null },
 };
 
 const ui = {};
@@ -684,7 +684,8 @@ function rowHtml(row) {
   const level = tone(row);
   const label = `Ver detalhes do contrato ${row.contrato || row.nup || row.objeto}`;
   const read = state.meeting.checks.has(row.id) ? " is-read" : "";
-  return `<tr class="${level ? `row-${level}` : ""}${read}" data-id="${esc(row.id)}" tabindex="0" aria-label="${esc(label)}">
+  const discussing = state.meeting.currentId === row.id ? " is-discussing" : "";
+  return `<tr class="${level ? `row-${level}` : ""}${read}${discussing}" data-id="${esc(row.id)}" tabindex="0" aria-label="${esc(label)}">
     <td class="col-check" data-label="Lido">${checkCell(row)}</td>
     <td class="col-objeto" data-label="Objeto">${objetoCell(row)}</td>
     <td data-label="Órgão"><span class="ellipsis" title="${esc(dim(row, "orgao"))}">${esc(dim(row, "orgao"))}</span></td>
@@ -705,11 +706,16 @@ function objetoCell(row) {
   return `<div class="objeto-wrap"><p class="objeto-text" id="obj-${esc(row.id)}">${esc(text)}</p></div>`;
 }
 
+function pontoRotulo(id) {
+  if (!state.meeting.checks.has(id)) return "";
+  if (state.meeting.currentId === id) return "em discussão";
+  const stamp = state.meeting.checks.get(id);
+  return stamp == null ? "em discussão" : formatDuration(stamp);
+}
+
 function checkCell(row) {
   const marked = state.meeting.checks.has(row.id);
-  const stamp = state.meeting.checks.get(row.id);
-  const time = !marked ? "" : stamp == null ? "lido" : formatDuration(stamp);
-  return `<label class="read-check"><input type="checkbox" class="js-read" data-id="${esc(row.id)}" ${marked ? "checked" : ""} aria-label="Marcar como lido na reunião" /><span class="read-time">${esc(time)}</span></label>`;
+  return `<label class="read-check"><input type="checkbox" class="js-read" data-id="${esc(row.id)}" ${marked ? "checked" : ""} aria-label="Iniciar discussão deste contrato" /><span class="read-time">${esc(pontoRotulo(row.id))}</span></label>`;
 }
 
 function markLongObjects() {
@@ -779,18 +785,50 @@ function onReadChange(event) {
   toggleRead(box.dataset.id, box.checked);
 }
 
+function fecharPonto(now = Date.now()) {
+  const { meeting } = state;
+  if (meeting.currentId && meeting.currentStartedAt) {
+    meeting.checks.set(meeting.currentId, Math.max(0, now - meeting.currentStartedAt));
+  }
+  meeting.currentId = null;
+  meeting.currentStartedAt = null;
+}
+
+function abrirPonto(id) {
+  const now = Date.now();
+  if (state.meeting.currentId === id) return;
+  fecharPonto(now);
+  state.meeting.currentId = id;
+  state.meeting.currentStartedAt = now;
+  state.meeting.checks.set(id, null);
+}
+
 function toggleRead(id, checked) {
   if (checked && !state.meeting.startedAt) startMeeting();
-  if (checked) state.meeting.checks.set(id, meetingElapsed());
-  else state.meeting.checks.delete(id);
-  const row = document.querySelector(`#table-body tr[data-id="${CSS.escape(id)}"]`);
-  if (row) {
-    row.classList.toggle("is-read", checked);
-    const time = row.querySelector(".read-time");
-    const stamp = state.meeting.checks.get(id);
-    if (time) time.textContent = !checked ? "" : stamp == null ? "lido" : formatDuration(stamp);
+  if (checked) abrirPonto(id);
+  else {
+    if (state.meeting.currentId === id) {
+      state.meeting.currentId = null;
+      state.meeting.currentStartedAt = null;
+    }
+    state.meeting.checks.delete(id);
   }
+  saveMeeting();
+  paintPontos();
   paintMeeting();
+}
+
+function paintPontos() {
+  document.querySelectorAll("#table-body tr[data-id]").forEach((row) => {
+    const id = row.dataset.id;
+    const marked = state.meeting.checks.has(id);
+    row.classList.toggle("is-read", marked);
+    row.classList.toggle("is-discussing", state.meeting.currentId === id);
+    const time = row.querySelector(".read-time");
+    if (time) time.textContent = pontoRotulo(id);
+    const box = row.querySelector(".js-read");
+    if (box) box.checked = marked;
+  });
 }
 
 function horaRelogio(ms) {
@@ -798,12 +836,20 @@ function horaRelogio(ms) {
 }
 
 function saveMeeting() {
-  const { startedAt, endedAt, inicio, fim } = state.meeting;
+  const { startedAt, endedAt, inicio, fim, currentId, currentStartedAt, checks } = state.meeting;
   if (!startedAt) {
     sessionStorage.removeItem("set-reuniao");
     return;
   }
-  sessionStorage.setItem("set-reuniao", JSON.stringify({ startedAt, endedAt, inicio, fim }));
+  sessionStorage.setItem("set-reuniao", JSON.stringify({
+    startedAt,
+    endedAt,
+    inicio,
+    fim,
+    currentId,
+    currentStartedAt,
+    checks: [...checks],
+  }));
 }
 
 function restoreMeeting() {
@@ -817,6 +863,9 @@ function restoreMeeting() {
     state.meeting.endedAt = saved.endedAt || null;
     state.meeting.inicio = saved.inicio || horaRelogio(saved.startedAt);
     state.meeting.fim = saved.fim || "";
+    state.meeting.currentId = saved.currentId || null;
+    state.meeting.currentStartedAt = saved.currentStartedAt || null;
+    state.meeting.checks = new Map(Array.isArray(saved.checks) ? saved.checks : []);
     if (!state.meeting.endedAt) {
       state.meeting.timer = window.setInterval(() => {
         ui.clock.textContent = formatDuration(meetingElapsed());
@@ -836,6 +885,8 @@ function startMeeting() {
   if (state.meeting.startedAt && !state.meeting.endedAt) return;
   if (state.meeting.endedAt) {
     state.meeting.checks = new Map();
+    state.meeting.currentId = null;
+    state.meeting.currentStartedAt = null;
     if (state.rows.length) renderTable(currentView());
   }
   if (state.meeting.timer) window.clearInterval(state.meeting.timer);
@@ -844,6 +895,8 @@ function startMeeting() {
   state.meeting.endedAt = null;
   state.meeting.inicio = horaRelogio(now);
   state.meeting.fim = "";
+  state.meeting.currentId = null;
+  state.meeting.currentStartedAt = null;
   saveMeeting();
   paintMeeting();
   state.meeting.timer = window.setInterval(() => {
@@ -854,11 +907,14 @@ function startMeeting() {
 
 function endMeeting() {
   if (!state.meeting.startedAt || state.meeting.endedAt) return;
-  state.meeting.endedAt = Date.now();
-  state.meeting.fim = horaRelogio(state.meeting.endedAt);
+  const now = Date.now();
+  fecharPonto(now);
+  state.meeting.endedAt = now;
+  state.meeting.fim = horaRelogio(now);
   if (state.meeting.timer) window.clearInterval(state.meeting.timer);
   state.meeting.timer = null;
   saveMeeting();
+  paintPontos();
   paintMeeting();
   avisarAta();
 }
@@ -871,6 +927,8 @@ function resetMeeting() {
   state.meeting.fim = "";
   state.meeting.timer = null;
   state.meeting.checks = new Map();
+  state.meeting.currentId = null;
+  state.meeting.currentStartedAt = null;
   saveMeeting();
   if (ui.clock) paintMeeting();
 }

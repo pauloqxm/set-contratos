@@ -1,7 +1,7 @@
 /* Aba do Comitê Executivo: pauta semanal a partir dos projetos ativos, com temporizador e ticket por projeto. */
 const Comite = (() => {
   const meetingKey = "set-reuniao-comite";
-  const meeting = { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map() };
+  const meeting = { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map(), currentId: null, currentStartedAt: null };
   let projetos = [];
   let filtro = "";
   const recolhidos = new Set();
@@ -57,12 +57,20 @@ const Comite = (() => {
   }
 
   function saveMeeting() {
-    const { startedAt, endedAt, inicio, fim } = meeting;
+    const { startedAt, endedAt, inicio, fim, currentId, currentStartedAt, checks } = meeting;
     if (!startedAt) {
       sessionStorage.removeItem(meetingKey);
       return;
     }
-    sessionStorage.setItem(meetingKey, JSON.stringify({ startedAt, endedAt, inicio, fim, checks: [...meeting.checks] }));
+    sessionStorage.setItem(meetingKey, JSON.stringify({
+      startedAt,
+      endedAt,
+      inicio,
+      fim,
+      currentId,
+      currentStartedAt,
+      checks: [...checks],
+    }));
   }
 
   function tick() {
@@ -81,6 +89,8 @@ const Comite = (() => {
       }
       meeting.startedAt = saved.startedAt;
       meeting.inicio = saved.inicio || horaRelogio(saved.startedAt);
+      meeting.currentId = saved.currentId || null;
+      meeting.currentStartedAt = saved.currentStartedAt || null;
       meeting.checks = new Map(Array.isArray(saved.checks) ? saved.checks : []);
       tick();
     } catch (error) {
@@ -100,19 +110,48 @@ const Comite = (() => {
     meeting.endedAt = null;
     meeting.inicio = horaRelogio(now);
     meeting.fim = "";
+    meeting.currentId = null;
+    meeting.currentStartedAt = null;
     saveMeeting();
     tick();
     render();
     avisarAta();
   }
 
+  function fecharPonto(now = Date.now()) {
+    if (meeting.currentId && meeting.currentStartedAt) {
+      meeting.checks.set(meeting.currentId, Math.max(0, now - meeting.currentStartedAt));
+    }
+    meeting.currentId = null;
+    meeting.currentStartedAt = null;
+  }
+
+  function abrirPonto(id) {
+    const now = Date.now();
+    if (meeting.currentId === id) return;
+    fecharPonto(now);
+    meeting.currentId = id;
+    meeting.currentStartedAt = now;
+    meeting.checks.set(id, null);
+  }
+
+  function pontoRotulo(id) {
+    if (!meeting.checks.has(id)) return "";
+    if (meeting.currentId === id) return "em discussão";
+    const stamp = meeting.checks.get(id);
+    return stamp == null ? "em discussão" : formatDuration(stamp);
+  }
+
   function end() {
     if (!meeting.startedAt || meeting.endedAt) return;
-    meeting.endedAt = Date.now();
-    meeting.fim = horaRelogio(meeting.endedAt);
+    const now = Date.now();
+    fecharPonto(now);
+    meeting.endedAt = now;
+    meeting.fim = horaRelogio(now);
     if (meeting.timer) window.clearInterval(meeting.timer);
     meeting.timer = null;
     saveMeeting();
+    paintPontos();
     paintMeeting();
     avisarAta();
   }
@@ -136,17 +175,31 @@ const Comite = (() => {
     document.getElementById("comite-end").hidden = !on;
   }
 
+  function paintPontos() {
+    document.querySelectorAll(".comite-card[data-id]").forEach((card) => {
+      const id = card.dataset.id;
+      const marked = meeting.checks.has(id);
+      card.classList.toggle("is-read", marked);
+      card.classList.toggle("is-discussing", meeting.currentId === id);
+      const time = card.querySelector(".read-time");
+      if (time) time.textContent = pontoRotulo(id);
+      const box = card.querySelector(".js-comite-check");
+      if (box) box.checked = marked;
+    });
+  }
+
   function marcar(id, checked) {
     if (checked && !meeting.startedAt) start();
-    if (checked) meeting.checks.set(id, elapsed());
-    else meeting.checks.delete(id);
-    saveMeeting();
-    const card = document.querySelector(`.comite-card[data-id="${CSS.escape(id)}"]`);
-    if (card) {
-      card.classList.toggle("is-read", checked);
-      const stamp = meeting.checks.get(id);
-      card.querySelector(".read-time").textContent = checked && stamp != null ? formatDuration(stamp) : checked ? "discutido" : "";
+    if (checked) abrirPonto(id);
+    else {
+      if (meeting.currentId === id) {
+        meeting.currentId = null;
+        meeting.currentStartedAt = null;
+      }
+      meeting.checks.delete(id);
     }
+    saveMeeting();
+    paintPontos();
     paintMeeting();
   }
 
@@ -179,8 +232,7 @@ const Comite = (() => {
 
   function cardHtml(projeto, dia) {
     const marcado = meeting.checks.has(projeto.id);
-    const stamp = meeting.checks.get(projeto.id);
-    const tempo = !marcado ? "" : stamp == null ? "discutido" : formatDuration(stamp);
+    const discutindo = meeting.currentId === projeto.id;
     const vencidos = projeto.itens.filter((item) => item.prazo && String(item.prazo).slice(0, 10) < dia).length;
     const prazo = projeto.prazo_conclusao ? `Conclusão prevista: ${dataBR(projeto.prazo_conclusao)}` : "";
     const pauta = pautaPorFrente(projeto.itens);
@@ -194,12 +246,12 @@ const Comite = (() => {
       : '<p class="hint">Nenhum item em aberto.</p>';
     const recolhido = recolhidos.has(projeto.id);
     const rotulo = recolhido ? "Mostrar itens" : "Recolher itens";
-    return `<article class="panel comite-card${marcado ? " is-read" : ""}${recolhido ? " is-collapsed" : ""}" data-id="${esc(projeto.id)}">
+    return `<article class="panel comite-card${marcado ? " is-read" : ""}${discutindo ? " is-discussing" : ""}${recolhido ? " is-collapsed" : ""}" data-id="${esc(projeto.id)}">
       <header class="comite-card-head">
         <div class="comite-lead">
-          <label class="read-check" title="Marcar como discutido na reunião">
-            <input type="checkbox" class="js-comite-check" data-id="${esc(projeto.id)}" ${marcado ? "checked" : ""} aria-label="Marcar ${esc(projeto.nome)} como discutido" />
-            <span class="read-time">${esc(tempo)}</span>
+          <label class="read-check" title="Iniciar discussão deste projeto">
+            <input type="checkbox" class="js-comite-check" data-id="${esc(projeto.id)}" ${marcado ? "checked" : ""} aria-label="Iniciar discussão de ${esc(projeto.nome)}" />
+            <span class="read-time">${esc(pontoRotulo(projeto.id))}</span>
           </label>
           <button type="button" class="comite-toggle" data-toggle="${esc(projeto.id)}" aria-expanded="${recolhido ? "false" : "true"}" title="${rotulo}" aria-label="${rotulo}">${recolhido ? "▸" : "▾"}</button>
         </div>

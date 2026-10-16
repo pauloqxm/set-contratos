@@ -412,6 +412,15 @@ h1 {
 
 .comite-card.is-read { border-left-color: var(--green); background: #fbfefb; }
 
+.comite-card.is-discussing,
+tr.is-discussing {
+  outline: 2px solid var(--orange);
+  outline-offset: -2px;
+}
+
+.comite-card.is-discussing .read-time,
+tr.is-discussing .read-time { color: var(--orange); }
+
 .comite-card-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
