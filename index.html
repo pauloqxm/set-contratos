@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=16" />
+  <link rel="stylesheet" href="css/style.css?v=17" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -41,10 +41,14 @@
         <button type="button" id="menu-toggle" class="menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="menu-list">
           <span class="menu-icon" aria-hidden="true"></span>
           Menu
-          <span id="menu-current" class="menu-current">Gestão de Contratos</span>
+          <span id="menu-current" class="menu-current">Início</span>
         </button>
         <div id="menu-list" class="menu-list" hidden>
-          <button type="button" class="view-tab is-on" data-view="painel" aria-current="page">
+          <button type="button" class="view-tab is-on" data-view="inicio" aria-current="page">
+            <strong>Início</strong>
+            <span>Atalhos para as áreas do painel</span>
+          </button>
+          <button type="button" class="view-tab" data-view="painel">
             <strong>Gestão de Contratos</strong>
             <span>Indicadores, gráficos e tabela dos contratos</span>
           </button>
@@ -79,7 +83,55 @@
   <div class="wrap page">
     <div id="banner" class="banner" role="status" hidden></div>
 
-    <div id="view-painel">
+    <section id="view-inicio" class="view-inicio">
+      <header class="page-banner">
+        <h2>Início</h2>
+        <p class="page-banner-lead">Escolha uma área do Painel de Gestão para começar.</p>
+      </header>
+      <div class="inicio-grid">
+        <button type="button" class="inicio-card" data-go="painel">
+          <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <rect x="8" y="12" width="48" height="40" rx="6" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M8 24h48" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M20 34h10M20 42h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M44 44V32l4 3 4-3v12" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+          </svg>
+          <h3>Gestão de Contratos</h3>
+          <p>Acompanhe a carteira, os prazos, os valores e a reunião de contratos.</p>
+        </button>
+        <button type="button" class="inicio-card" data-go="comite">
+          <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <circle cx="32" cy="18" r="7" stroke="currentColor" stroke-width="2.5"/>
+            <circle cx="14" cy="24" r="5" stroke="currentColor" stroke-width="2.5"/>
+            <circle cx="50" cy="24" r="5" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M12 48c1-8 8-12 20-12s19 4 20 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M8 46c.8-5 5-8 12-8M56 46c-.8-5-5-8-12-8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <h3>Comitê Executivo</h3>
+          <p>Abra a pauta semanal dos projetos ativos e conduza a discussão ponto a ponto.</p>
+        </button>
+        <button type="button" class="inicio-card" data-go="ata">
+          <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <path d="M18 8h20l14 14v34a4 4 0 0 1-4 4H18a4 4 0 0 1-4-4V12a4 4 0 0 1 4-4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M36 8v16h16" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M24 36h16M24 44h12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <h3>Ata</h3>
+          <p>Registre o que foi falado na reunião de contratos ou do Comitê Executivo.</p>
+        </button>
+        <button type="button" class="inicio-card" data-go="frequencia">
+          <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <rect x="10" y="14" width="44" height="42" rx="6" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M10 26h44M22 8v12M42 8v12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M24 40l6 6 14-16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h3>Frequência</h3>
+          <p>Consulte quem esteve presente nas reuniões do comitê, por pessoa e por data.</p>
+        </button>
+      </div>
+    </section>
+
+    <div id="view-painel" hidden>
     <header class="page-banner">
       <h2>Gestão de Contratos</h2>
       <p class="page-banner-lead">Carteira, prazos, valores e a reunião de acompanhamento dos contratos.</p>
@@ -591,12 +643,12 @@
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.1.0/dist/browser/oidc-client-ts.min.js"></script>
   <script defer src="js/config.js"></script>
-  <script defer src="js/sso.js"></script>
+  <script defer src="js/sso.js?v=2"></script>
   <script defer src="js/data.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js?v=2"></script>
   <script defer src="js/frequencia.js"></script>
   <script defer src="js/comite.js?v=5"></script>
-  <script defer src="js/ata.js?v=14"></script>
+  <script defer src="js/ata.js?v=15"></script>
 </body>
 </html>

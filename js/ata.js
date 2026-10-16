@@ -138,6 +138,7 @@ const Ata = (() => {
   }
 
   function show(view) {
+    document.getElementById("view-inicio").hidden = view !== "inicio";
     document.getElementById("view-painel").hidden = view !== "painel";
     document.getElementById("view-comite").hidden = view !== "comite";
     document.getElementById("view-ata").hidden = view !== "ata";
@@ -858,6 +859,10 @@ const Ata = (() => {
       const button = event.target.closest(".view-tab");
       if (button) show(button.dataset.view);
     });
+    document.getElementById("view-inicio").addEventListener("click", (event) => {
+      const card = event.target.closest("[data-go]");
+      if (card) show(card.dataset.go);
+    });
     document.addEventListener("click", (event) => {
       if (!event.target.closest(".view-menu")) toggleMenu(false);
     });
@@ -1015,11 +1020,12 @@ const Ata = (() => {
     if (sessionStorage.getItem(returnKey) || vista === "ata") {
       sessionStorage.removeItem(returnKey);
       show("ata");
-    } else if (vista === "frequencia" || vista === "comite") {
+    } else if (vista === "frequencia" || vista === "comite" || vista === "painel" || vista === "inicio") {
       show(vista);
     } else {
       aplicarTipo();
       fillMeta();
+      show("inicio");
     }
   }
 

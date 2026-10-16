@@ -78,7 +78,12 @@ const SSO = (() => {
     const ata = document.getElementById("view-ata");
     const freq = document.getElementById("view-frequencia");
     const comite = document.getElementById("view-comite");
-    const view = ata && !ata.hidden ? "ata" : freq && !freq.hidden ? "frequencia" : comite && !comite.hidden ? "comite" : "painel";
+    const painel = document.getElementById("view-painel");
+    const view = ata && !ata.hidden ? "ata"
+      : freq && !freq.hidden ? "frequencia"
+      : comite && !comite.hidden ? "comite"
+      : painel && !painel.hidden ? "painel"
+      : "inicio";
     sessionStorage.setItem("set-vista", view);
     if (view === "ata") sessionStorage.setItem("set-ata-voltar", "1");
   }
