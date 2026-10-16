@@ -35,9 +35,22 @@
         <p class="eyebrow">SET / IDT · Secretaria do Trabalho</p>
         <h1>Gestão dos Contratos</h1>
       </div>
-      <nav class="view-tabs" aria-label="Seções do painel">
-        <button type="button" class="view-tab is-on" data-view="painel" aria-selected="true">Painel</button>
-        <button type="button" class="view-tab" data-view="ata" aria-selected="false">Ata</button>
+      <nav class="view-menu" aria-label="Seções do painel">
+        <button type="button" id="menu-toggle" class="menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="menu-list">
+          <span class="menu-icon" aria-hidden="true"></span>
+          Menu
+          <span id="menu-current" class="menu-current">Painel</span>
+        </button>
+        <div id="menu-list" class="menu-list" hidden>
+          <button type="button" class="view-tab is-on" data-view="painel" aria-current="page">
+            <strong>Painel</strong>
+            <span>Indicadores, gráficos e tabela dos contratos</span>
+          </button>
+          <button type="button" class="view-tab" data-view="ata">
+            <strong>Ata</strong>
+            <span>Ata da reunião, por objeto</span>
+          </button>
+        </div>
       </nav>
       <div class="topbar-actions">
         <div class="session-info">
