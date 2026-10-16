@@ -420,22 +420,25 @@ const Ata = (() => {
       .map((nome) => `<w:${nome} w:val="single" w:sz="4" w:space="0" w:color="${cor}"/>`)
       .join("");
     const colunas = span ? `<w:gridSpan w:val="${span}"/>` : "";
-    const medida = largura ? `<w:tcW w:w="${largura}" w:type="pct"/>` : "";
-    return `<w:tc><w:tcPr>${medida}${colunas}${fundo}<w:tcBorders>${lado}</w:tcBorders><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${conteudo}</w:tc>`;
+    const medida = largura ? `<w:tcW w:w="${largura}" w:type="dxa"/>` : "";
+    return `<w:tc><w:tcPr>${medida}${colunas}<w:vAlign w:val="top"/>${fundo}<w:tcBorders>${lado}</w:tcBorders><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${conteudo}</w:tc>`;
   }
 
   function tabela(linhas) {
-    return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr>${linhas
+    const grade = [3200, 1800, 3200, 2000].map((largura) => `<w:gridCol w:w="${largura}"/>`).join("");
+    return `<w:tbl><w:tblPr><w:tblW w:w="10200" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid>${grade}</w:tblGrid>${linhas
       .map((celulas) => `<w:tr>${celulas.join("")}</w:tr>`)
       .join("")}</w:tbl>`;
   }
 
-  function campo(rotulo, valor, fill, borda, valorCor) {
+  function campo(rotulo, valor, fill, borda, valorCor, largura) {
     return celula(
       paragrafo(rotulo, { tamanho: "16", cor: "6D6E71", depois: "40" }) +
         paragrafo(valor || "—", { negrito: true, cor: valorCor || "4D4D4D", depois: "0" }),
       fill || "FFFFFF",
       borda,
+      null,
+      largura,
     );
   }
 
@@ -448,47 +451,47 @@ const Ata = (() => {
     const blocos = [
       paragrafo("Ata da reunião", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
       paragrafo("Descreva o que foi falado sobre cada objeto.", { tamanho: "18", cor: "6D6E71", depois: "160" }),
-      tabela([
-        [
-          campo("TÍTULO", draft.titulo),
-          campo("DATA", dataBR(draft.data)),
-          campo("RESPONSÁVEL", draft.responsavel_nome),
-          campo("DURAÇÃO", currentDuration() || draft.duracao, "E8F7EA", "B7E0BE", "2F9A3D"),
-        ],
-      ]),
-      paragrafo("", { depois: "120" }),
-      tabela([[
-        celula(
-          paragrafo("PARTICIPANTES", { tamanho: "16", cor: "6D6E71", depois: "60" }) +
-            paragrafo(nomesSalvos().join(", ") || "Nenhuma presença registrada nesta data.", { negrito: true, depois: "0" }),
-          "E6F7F5",
-          "B7E0DA",
-        ),
-      ]]),
-      paragrafo("", { depois: "120" }),
     ];
+    const linhas = [[
+      campo("TÍTULO", draft.titulo, "FFFFFF", "C8CACB", "4D4D4D", 3200),
+      campo("DATA", dataBR(draft.data), "FFFFFF", "C8CACB", "4D4D4D", 1800),
+      campo("RESPONSÁVEL", draft.responsavel_nome, "FFFFFF", "C8CACB", "4D4D4D", 3200),
+      campo("DURAÇÃO", currentDuration() || draft.duracao, "E8F7EA", "B7E0BE", "2F9A3D", 2000),
+    ], [
+      celula(
+        paragrafo("PARTICIPANTES", { tamanho: "16", cor: "6D6E71", depois: "60" }) +
+          paragrafo(nomesSalvos().join(", ") || "Nenhuma presença registrada nesta data.", { negrito: true, depois: "0" }),
+        "E6F7F5",
+        "B7E0DA",
+        4,
+      ),
+    ]];
     draft.itens.forEach((item) => {
       const meta = [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
-      const linhas = String(item.texto || "").split(/\n/);
-      const texto = (linhas.some((linha) => linha.trim()) ? linhas : [" "])
+      const partes = String(item.texto || "").split(/\n/);
+      const texto = (partes.some((linha) => linha.trim()) ? partes : [" "])
         .map((linha) => paragrafo(linha, { depois: "40" }))
         .join("");
-      blocos.push(tabela([
-        [
-          celula(
-            paragrafo(meta || "Contrato", { tamanho: "16", cor: "6D6E71", depois: "40" }) +
-              paragrafo(item.objeto || "Contrato", { negrito: true, depois: "0" }),
-            "E6F3FB",
-            "C5DFF0",
-            null,
-            4200,
-          ),
-          celula(paragrafo(item.tempo || "", { negrito: true, cor: "2F9A3D", depois: "0" }), "E6F3FB", "C5DFF0", null, 800),
-        ],
-        [celula(texto, "FFFFFF", "C8CACB", 2)],
-      ]));
-      blocos.push(paragrafo("", { depois: "120" }));
+      linhas.push([
+        celula(
+          paragrafo(meta || "Contrato", { tamanho: "16", cor: "6D6E71", depois: "40" }) +
+            paragrafo(item.objeto || "Contrato", { negrito: true, depois: "0" }),
+          "E6F3FB",
+          "C5DFF0",
+          3,
+          8200,
+        ),
+        celula(
+          paragrafo(item.tempo || "", { negrito: true, cor: "2F9A3D", depois: "0" }),
+          "E8F7EA",
+          "B7E0BE",
+          null,
+          2000,
+        ),
+      ]);
+      linhas.push([celula(texto, "FFFFFF", "C8CACB", 4)]);
     });
+    blocos.push(tabela(linhas));
     if (!draft.itens.length) blocos.push(paragrafo("Nenhum objeto nesta ata.", { cor: "6D6E71" }));
     const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
