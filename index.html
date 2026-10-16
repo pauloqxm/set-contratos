@@ -50,6 +50,10 @@
             <strong>Ata</strong>
             <span>Ata da reunião, por objeto</span>
           </button>
+          <button type="button" class="view-tab" data-view="frequencia">
+            <strong>Frequência</strong>
+            <span>Presenças do comitê, por data</span>
+          </button>
         </div>
       </nav>
       <div class="topbar-actions">
@@ -379,13 +383,15 @@
           <label>Responsável
             <input id="ata-responsavel" type="text" maxlength="160" placeholder="Nome de quem responde pela ata" />
           </label>
-          <label>Participantes
-            <input id="ata-participantes" type="text" maxlength="400" placeholder="Nomes separados por vírgula" />
-          </label>
           <label>Duração
             <input id="ata-duracao" type="text" readonly />
           </label>
         </div>
+        <fieldset class="ata-participantes">
+          <legend>Participantes</legend>
+          <p id="ata-participantes-nota" class="hint">Quem confirmou presença na data da ata.</p>
+          <div id="ata-participantes-lista" class="freq-checks"></div>
+        </fieldset>
         <div class="ata-tools">
           <button type="button" id="ata-from-checks" class="btn-ghost btn-small">Trazer contratos lidos</button>
           <label class="ata-search">Incluir contrato
@@ -395,6 +401,26 @@
         <ul id="ata-sugestoes" class="ata-sugestoes" hidden></ul>
         <div id="ata-itens" class="ata-itens"></div>
         <p id="ata-vazio" class="hint">Nenhum objeto na ata. Traga os contratos marcados como lidos ou busque um contrato.</p>
+      </div>
+    </section>
+
+    <section id="view-frequencia" class="view-frequencia" hidden>
+      <div class="panel freq-sheet">
+        <header class="ata-head">
+          <div>
+            <h2>Frequência</h2>
+            <p class="hint">Presenças confirmadas na planilha do Comitê Executivo. A ata usa esta lista na data da reunião.</p>
+          </div>
+          <button type="button" id="freq-refresh" class="btn-ghost btn-small">Atualizar</button>
+        </header>
+        <div class="freq-bar">
+          <label>Data
+            <select id="freq-data"></select>
+          </label>
+          <p id="freq-total" class="freq-total"><strong>—</strong><span>presentes</span></p>
+        </div>
+        <p id="freq-nota" class="banner" role="status" hidden></p>
+        <ul id="freq-lista" class="freq-lista"></ul>
       </div>
     </section>
 
@@ -433,6 +459,7 @@
   <script defer src="js/data.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js"></script>
+  <script defer src="js/frequencia.js"></script>
   <script defer src="js/ata.js"></script>
 </body>
 </html>

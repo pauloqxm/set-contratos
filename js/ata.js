@@ -12,7 +12,7 @@ const Ata = (() => {
       titulo: `Reunião de contratos ${today.toLocaleDateString("pt-BR")}`,
       data: today.toISOString().slice(0, 10),
       responsavel_nome: "",
-      participantes: "",
+      participantes: null,
       duracao: "",
       itens: [],
     };
@@ -101,9 +101,9 @@ const Ata = (() => {
   }
 
   function show(view) {
-    const isAta = view === "ata";
-    document.getElementById("view-painel").hidden = isAta;
-    document.getElementById("view-ata").hidden = !isAta;
+    document.getElementById("view-painel").hidden = view !== "painel";
+    document.getElementById("view-ata").hidden = view !== "ata";
+    document.getElementById("view-frequencia").hidden = view !== "frequencia";
     document.querySelectorAll(".view-tab").forEach((button) => {
       const on = button.dataset.view === view;
       button.classList.toggle("is-on", on);
@@ -115,11 +115,80 @@ const Ata = (() => {
       }
     });
     toggleMenu(false);
-    if (isAta) {
+    if (view === "ata") {
       fillMeta();
       renderItems();
       loadList();
     }
+    if (view === "frequencia") Frequencia.show();
+  }
+
+  function nomesSalvos() {
+    return String(draft.participantes || "")
+      .split(",")
+      .map((nome) => nome.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+  }
+
+  function chaveNome(nome) {
+    return nome
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLocaleLowerCase("pt-BR");
+  }
+
+  async function renderParticipantes() {
+    const host = document.getElementById("ata-participantes-lista");
+    const nota = document.getElementById("ata-participantes-nota");
+    let people = Frequencia.presentes(draft.data);
+    if (people === null) {
+      host.innerHTML = "";
+      nota.textContent = Frequencia.erro() || "Carregando a lista de presença…";
+      if (!Frequencia.erro()) {
+        try {
+          await Frequencia.load();
+        } catch (err) {
+          /* a nota mostra o erro na próxima passagem */
+        }
+        people = Frequencia.presentes(draft.data);
+      }
+    }
+    if (!people) {
+      nota.textContent = Frequencia.erro() || "Não foi possível ler a lista de presença.";
+      return;
+    }
+    if (!draft.id && draft.participantes == null && people.length) {
+      draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
+      saveDraft();
+    }
+    const salvos = nomesSalvos();
+    const chaves = new Set(people.map((pessoa) => chaveNome(pessoa.nome)));
+    const extras = salvos.filter((nome) => !chaves.has(chaveNome(nome)));
+    const marcados = new Set(salvos.map(chaveNome));
+    const opcoes = people.map((pessoa) => pessoa.nome).concat(extras);
+    if (!opcoes.length) {
+      host.innerHTML = "";
+      nota.textContent = "Nenhuma presença registrada nesta data.";
+      return;
+    }
+    nota.textContent = "Quem confirmou presença na data da ata. Desmarque quem não entra na ata.";
+    host.innerHTML = opcoes
+      .map((nome) => {
+        const on = marcados.has(chaveNome(nome)) ? " checked" : "";
+        return `<label class="freq-check"><input type="checkbox" value="${esc(nome)}"${on} /> ${esc(nome)}</label>`;
+      })
+      .join("");
+  }
+
+  function readParticipantes() {
+    const boxes = [...document.querySelectorAll("#ata-participantes-lista input[type=checkbox]")];
+    if (!boxes.length) return;
+    draft.participantes = boxes
+      .filter((box) => box.checked)
+      .map((box) => box.value)
+      .join(", ");
   }
 
   function currentDuration() {
@@ -135,15 +204,15 @@ const Ata = (() => {
     document.getElementById("ata-titulo").value = draft.titulo;
     document.getElementById("ata-data").value = draft.data;
     document.getElementById("ata-responsavel").value = draft.responsavel_nome;
-    document.getElementById("ata-participantes").value = draft.participantes;
     document.getElementById("ata-duracao").value = currentDuration() || "Reunião não iniciada";
+    renderParticipantes();
   }
 
   function readMeta() {
     draft.titulo = document.getElementById("ata-titulo").value.trim();
     draft.data = document.getElementById("ata-data").value;
     draft.responsavel_nome = document.getElementById("ata-responsavel").value.trim();
-    draft.participantes = document.getElementById("ata-participantes").value.trim();
+    readParticipantes();
     saveDraft();
   }
 
@@ -280,7 +349,7 @@ const Ata = (() => {
         titulo: draft.titulo,
         data: draft.data,
         responsavel_nome: draft.responsavel_nome,
-        participantes: draft.participantes,
+        participantes: draft.participantes || "",
         duracao: draft.duracao,
         itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto }) => ({ nup, contrato, contratada, objeto, tempo, texto })),
       });
@@ -311,9 +380,24 @@ const Ata = (() => {
       document.getElementById("menu-toggle").focus();
     });
 
-    ["ata-titulo", "ata-data", "ata-responsavel", "ata-participantes"].forEach((id) => {
+    ["ata-titulo", "ata-responsavel"].forEach((id) => {
       document.getElementById(id).addEventListener("input", readMeta);
     });
+    document.getElementById("ata-data").addEventListener("change", async () => {
+      draft.titulo = document.getElementById("ata-titulo").value.trim();
+      draft.data = document.getElementById("ata-data").value;
+      draft.responsavel_nome = document.getElementById("ata-responsavel").value.trim();
+      try {
+        await Frequencia.load();
+      } catch (err) {
+        /* renderParticipantes mostra o erro */
+      }
+      const people = Frequencia.presentes(draft.data) || [];
+      draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
+      saveDraft();
+      renderParticipantes();
+    });
+    document.getElementById("ata-participantes-lista").addEventListener("change", readMeta);
 
     document.getElementById("ata-from-checks").addEventListener("click", () => {
       const added = bringChecks();

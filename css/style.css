@@ -295,7 +295,8 @@ h1 {
 
 .view-tab.is-on strong { color: var(--orange); }
 
-.view-ata[hidden] { display: none; }
+.view-ata[hidden],
+.view-frequencia[hidden] { display: none; }
 
 .ata-sheet { margin-top: 16px; padding: 16px; }
 
@@ -313,7 +314,7 @@ h1 {
 
 .ata-meta {
   display: grid;
-  grid-template-columns: 1.3fr 0.6fr 1fr 1.3fr 0.6fr;
+  grid-template-columns: 1.4fr 0.7fr 1.2fr 0.7fr;
   gap: 12px;
   margin-top: 14px;
 }
@@ -329,7 +330,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-search input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .freq-bar select, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -341,6 +342,104 @@ h1 {
   padding: 8px 10px;
   background: var(--white);
 }
+
+.ata-participantes {
+  margin: 14px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+}
+
+.ata-participantes legend {
+  padding: 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.freq-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+}
+
+.freq-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.view-frequencia { margin-top: 16px; }
+
+.freq-sheet { padding: 16px; }
+
+.freq-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.freq-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: min(280px, 100%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.freq-total {
+  margin: 0;
+  line-height: 1;
+}
+
+.freq-total strong {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--green-dark);
+}
+
+.freq-total span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.freq-lista {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.freq-lista li {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fafafa;
+}
+
+.freq-lista span { font-size: 0.75rem; color: var(--ink-soft); }
 
 .ata-tools { margin-top: 14px; }
 
@@ -1506,6 +1605,9 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 @media print {
   body.printing-ata .view-menu,
   body.printing-ata #view-painel,
+  body.printing-ata #view-frequencia,
+  body.printing-ata .freq-check:not(:has(input:checked)),
+  body.printing-ata .freq-check input,
   body.printing-ata .topbar-actions,
   body.printing-ata #ata-login-note,
   body.printing-ata .ata-tools,

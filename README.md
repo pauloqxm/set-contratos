@@ -39,7 +39,7 @@ A planilha precisa continuar publicada na web. O painel busca o CSV a cada carre
 
 ## Acesso pelo SSO
 
-O site inteiro (abas **Painel** e **Ata**) só abre depois do login no SSO (`https://sso.idt.org.br`, aplicação `set_contratos`). Quem não tem sessão vai para a tela do SSO; quem não tem acesso vê um aviso. O botão **Sair** fica na barra superior.
+O site inteiro (abas **Painel**, **Ata** e **Frequência**) só abre depois do login no SSO (`https://sso.idt.org.br`, aplicação `set_contratos`). Quem não tem sessão vai para a tela do SSO; quem não tem acesso vê um aviso. O botão **Sair** fica na barra superior.
 
 O site não tem servidor, então o login é feito no navegador, sem segredo. No `/admin` do SSO, a aplicação `set_contratos` precisa estar como:
 
@@ -55,6 +55,12 @@ O login protege a tela, não a planilha: quem tiver o link do CSV publicado aind
 A aba **Ata** grava no Supabase `ftuycoafwraxaachidlh`, usando o mesmo login do painel.
 
 O **Responsável** da ata é um campo de texto livre. Em ata nova, o site sugere o nome de quem está logado, se o SSO tiver informado; dá para editar à vontade.
+
+Os **participantes** vêm da aba **Frequência**: na data da ata, a lista é quem confirmou presença na planilha do Comitê Executivo. Dá para desmarcar nomes antes de salvar.
+
+## Frequência
+
+A aba **Frequência** lê a planilha publicada de presença (`frequenciaCsvUrl` em [`js/config.js`](js/config.js)). O filtro escolhe a data da reunião e mostra o total e os nomes, sem repetir quem registrou mais de uma vez no mesmo dia.
 
 No Supabase, uma vez (e de novo sempre que estes arquivos mudarem):
 
@@ -75,6 +81,7 @@ Edite as URLs em [`js/config.js`](js/config.js):
 
 - `csvUrl` — link publicado terminando em `output=csv`
 - `sheetUrl` — link `pubhtml` usado no rodapé
+- `frequenciaCsvUrl` — presença do comitê, também em `output=csv`
 
 Os prazos dos alertas (`alertaCritico` e `alertaAtencao`) também ficam nesse arquivo. O padrão é 45 e 100 dias.
 
