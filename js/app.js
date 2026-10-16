@@ -809,7 +809,10 @@ function saveMeeting() {
 function restoreMeeting() {
   try {
     const saved = JSON.parse(sessionStorage.getItem("set-reuniao") || "null");
-    if (!saved || !saved.startedAt) return;
+    if (!saved || !saved.startedAt || saved.endedAt) {
+      sessionStorage.removeItem("set-reuniao");
+      return;
+    }
     state.meeting.startedAt = saved.startedAt;
     state.meeting.endedAt = saved.endedAt || null;
     state.meeting.inicio = saved.inicio || horaRelogio(saved.startedAt);

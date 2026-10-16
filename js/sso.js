@@ -133,6 +133,12 @@ const SSO = (() => {
     sessionStorage.setItem(idleKey, String(now));
   }
 
+  function limparSessaoLocal() {
+    ["set-reuniao", "set-ata-rascunho", "set-vista", "set-ata-voltar", idleKey].forEach((key) => {
+      sessionStorage.removeItem(key);
+    });
+  }
+
   async function idleOut() {
     if (!idleOn && idleAge() < idleMs) return;
     const age = idleAge();
@@ -143,7 +149,7 @@ const SSO = (() => {
     idleOn = false;
     clearTimeout(idleTimer);
     clearTimeout(renewTimer);
-    if (!document.getElementById("view-ata").hidden) sessionStorage.setItem("set-ata-voltar", "1");
+    limparSessaoLocal();
     current = null;
     forceLogin = true;
     try {
@@ -238,7 +244,7 @@ const SSO = (() => {
     idleOn = false;
     clearTimeout(idleTimer);
     clearTimeout(renewTimer);
-    sessionStorage.removeItem(idleKey);
+    limparSessaoLocal();
     try {
       await manager.signoutRedirect();
     } catch (error) {
