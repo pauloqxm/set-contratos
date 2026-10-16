@@ -25,6 +25,12 @@ const SSO = (() => {
     : null;
   let current = null;
   let pending = null;
+  let forceLogin = false;
+  const idleMs = 30 * 60 * 1000;
+  const idleKey = "set-sso-atividade";
+  let idleTimer = 0;
+  let idleOn = false;
+  let lastMark = 0;
 
   function gate(message, canRetry) {
     document.body.classList.remove("is-authed");
@@ -65,6 +71,65 @@ const SSO = (() => {
   function admit() {
     document.getElementById("sso-user").textContent = displayName();
     document.body.classList.add("is-authed");
+    watchIdle();
+  }
+
+  function idleAge() {
+    const last = Number(sessionStorage.getItem(idleKey) || 0);
+    return last ? Date.now() - last : 0;
+  }
+
+  function armIdle() {
+    clearTimeout(idleTimer);
+    const wait = Math.max(0, idleMs - idleAge());
+    idleTimer = setTimeout(idleOut, wait);
+  }
+
+  function touchActivity() {
+    if (!idleOn) return;
+    const now = Date.now();
+    if (now - lastMark < 5000) return;
+    lastMark = now;
+    sessionStorage.setItem(idleKey, String(now));
+    armIdle();
+  }
+
+  function stampActivity() {
+    const now = Date.now();
+    lastMark = now;
+    sessionStorage.setItem(idleKey, String(now));
+  }
+
+  async function idleOut() {
+    if (!idleOn && idleAge() < idleMs) return;
+    const age = idleAge();
+    if (age && age < idleMs - 1000) {
+      armIdle();
+      return;
+    }
+    idleOn = false;
+    clearTimeout(idleTimer);
+    if (!document.getElementById("view-ata").hidden) sessionStorage.setItem("set-ata-voltar", "1");
+    current = null;
+    forceLogin = true;
+    try {
+      await manager.removeUser();
+    } catch (error) {
+      /* a sessão local some mesmo se o SSO não responder */
+    }
+    gate("A sessão encerrou após 30 minutos sem atividade no teclado ou no mouse.", true);
+  }
+
+  function watchIdle() {
+    if (idleAge() >= idleMs && sessionStorage.getItem(idleKey)) {
+      idleOn = true;
+      idleOut();
+      return;
+    }
+    if (!sessionStorage.getItem(idleKey)) stampActivity();
+    lastMark = Number(sessionStorage.getItem(idleKey) || Date.now());
+    idleOn = true;
+    armIdle();
   }
 
   function refused() {
@@ -75,8 +140,11 @@ const SSO = (() => {
   }
 
   async function login() {
+    const args = { state: { hash: location.hash } };
+    if (forceLogin) args.prompt = "login";
+    forceLogin = false;
     try {
-      await manager.signinRedirect({ state: { hash: location.hash } });
+      await manager.signinRedirect(args);
     } catch (error) {
       refused();
     }
@@ -92,6 +160,7 @@ const SSO = (() => {
     if (url.searchParams.has("code") || url.searchParams.has("error")) {
       try {
         current = await enrich(await manager.signinRedirectCallback());
+        stampActivity();
         history.replaceState(null, "", url.pathname + ((current.state && current.state.hash) || ""));
       } catch (error) {
         history.replaceState(null, "", url.pathname);
@@ -107,6 +176,13 @@ const SSO = (() => {
     } else {
       current = await enrich(await manager.getUser());
       if (!current || current.expired) return login();
+      if (sessionStorage.getItem(idleKey) && idleAge() >= idleMs) {
+        await manager.removeUser();
+        current = null;
+        forceLogin = true;
+        gate("A sessão encerrou após 30 minutos sem atividade no teclado ou no mouse.", true);
+        return null;
+      }
     }
     admit();
     return current;
@@ -123,6 +199,9 @@ const SSO = (() => {
   }
 
   async function sair() {
+    idleOn = false;
+    clearTimeout(idleTimer);
+    sessionStorage.removeItem(idleKey);
     try {
       await manager.signoutRedirect();
     } catch (error) {
@@ -134,6 +213,14 @@ const SSO = (() => {
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("auth-retry").addEventListener("click", login);
     document.getElementById("btn-logout").addEventListener("click", sair);
+    ["keydown", "pointerdown", "mousemove", "wheel", "touchstart"].forEach((type) => {
+      document.addEventListener(type, touchActivity, { passive: true });
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible" || !idleOn) return;
+      if (idleAge() >= idleMs) idleOut();
+      else armIdle();
+    });
   });
 
   return { exigirLogin, login, sair, user, displayName };
