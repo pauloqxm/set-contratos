@@ -4,19 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>Gestão dos Contratos — SET / IDT</title>
-  <meta name="description" content="Painel de acompanhamento dos contratos da Secretaria do Trabalho do Ceará." />
+  <title>Painel de Gestão</title>
+  <meta name="description" content="Painel de gestão da Secretaria do Trabalho: contratos, comitê executivo, atas e frequência." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2339B54A'/%3E%3Cpath d='M8 16.2 13.2 21.4 24 10.6' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
     <div class="auth-card">
-      <p class="eyebrow">SET / IDT · Secretaria do Trabalho</p>
-      <h1>Gestão dos Contratos</h1>
+      <div class="brand" aria-label="Logos institucionais">
+        <img class="logo logo-set" src="https://raw.githubusercontent.com/pauloqxm/set-casa/main/web/static/img/logo-set.jpg" alt="Ceará — Governo do Estado · Secretaria do Trabalho" width="120" height="120" />
+        <img class="logo logo-idt" src="https://raw.githubusercontent.com/pauloqxm/set-casa/main/web/static/img/logo-idt.png" alt="Instituto de Desenvolvimento do Trabalho" width="220" height="72" />
+      </div>
+      <h1>Painel de Gestão</h1>
       <p id="auth-message" class="auth-message">Conferindo o acesso…</p>
       <button type="button" id="auth-retry" class="btn-run" hidden>Entrar</button>
       <p><a href="https://sso.idt.org.br/conta">Meus sistemas</a></p>
@@ -32,8 +35,7 @@
         <img class="logo logo-idt" src="https://raw.githubusercontent.com/pauloqxm/set-casa/main/web/static/img/logo-idt.png" alt="Instituto de Desenvolvimento do Trabalho" width="220" height="72" />
       </div>
       <div class="heading">
-        <p class="eyebrow">SET / IDT · Secretaria do Trabalho</p>
-        <h1>Gestão dos Contratos</h1>
+        <h1>Painel de Gestão</h1>
       </div>
       <nav class="view-menu" aria-label="Seções do painel">
         <button type="button" id="menu-toggle" class="menu-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="menu-list">
@@ -78,6 +80,10 @@
     <div id="banner" class="banner" role="status" hidden></div>
 
     <div id="view-painel">
+    <header class="page-banner">
+      <h2>Gestão de Contratos</h2>
+      <p class="page-banner-lead">Carteira, prazos, valores e a reunião de acompanhamento dos contratos.</p>
+    </header>
     <section class="filters-bar" aria-label="Filtros">
       <h2 class="sr-only">Filtros</h2>
       <div id="filters" class="filters">
@@ -361,11 +367,10 @@
     </div>
 
     <section id="view-comite" class="view-comite" hidden>
-      <header class="comite-banner">
-        <p class="comite-banner-kicker">SET / IDT · Secretaria do Trabalho</p>
+      <header class="page-banner">
         <h2>Pauta do Comitê Executivo</h2>
-        <p class="comite-banner-lead">Cada projeto ativo é um ponto da pauta semanal, com os itens ainda em aberto.</p>
-        <p id="comite-count" class="comite-banner-meta" aria-live="polite"></p>
+        <p class="page-banner-lead">Cada projeto ativo é um ponto da pauta semanal, com os itens ainda em aberto.</p>
+        <p id="comite-count" class="page-banner-meta" aria-live="polite"></p>
       </header>
       <div class="comite-bar">
         <label class="ata-search">Projeto
@@ -387,12 +392,12 @@
     </section>
 
     <section id="view-ata" class="view-ata" hidden>
+      <header class="page-banner">
+        <h2 id="ata-heading">Ata da reunião</h2>
+        <p id="ata-subtitulo" class="page-banner-lead">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
+      </header>
       <div class="panel ata-sheet">
         <header class="ata-head">
-          <div>
-            <h2 id="ata-heading">Ata da reunião</h2>
-            <p id="ata-subtitulo" class="hint">Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.</p>
-          </div>
           <label class="ata-tipo">Reunião
             <select id="ata-tipo">
               <option value="contratos">Reunião de Contratos</option>
@@ -458,6 +463,10 @@
     </section>
 
     <section id="view-frequencia" class="view-frequencia" hidden>
+      <header class="page-banner">
+        <h2>Frequência</h2>
+        <p class="page-banner-lead">Presenças do comitê, por pessoa e por data.</p>
+      </header>
       <div class="freq-kpis">
         <article class="kpi-block">
           <span class="kpi-label">Reuniões</span>
@@ -535,7 +544,7 @@
         <span class="strip-blue"></span>
         <span class="strip-orange"></span>
       </div>
-      <p>Gestão de Contratos — SET / IDT</p>
+      <p>Painel de Gestão</p>
       <p class="footer-note">Fonte: planilha publicada <a id="sheet-link" href="https://docs.google.com/spreadsheets/d/e/2PACX-1vRH1haVymKYDsYJ6iEbMo5Z_IBSvGaN-Ad7FWuMsvCxxW-Ntw3fJjMwfzEDY4FKpLWdV8GfbAP8R4Su/pubhtml" target="_blank" rel="noopener">CONTROLE DE CONTRATOS</a>. Os números mudam quando a planilha é atualizada e o painel é recarregado.</p>
     </footer>
   </div>

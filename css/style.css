@@ -303,7 +303,7 @@ h1 {
 .view-comite[hidden],
 .view-frequencia[hidden] { display: none; }
 
-.comite-banner {
+.page-banner {
   margin-top: 16px;
   padding: 22px 24px 20px;
   border-radius: var(--radius);
@@ -314,32 +314,25 @@ h1 {
   box-shadow: var(--shadow);
 }
 
-.comite-banner-kicker {
-  margin: 0 0 6px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #ffe2d4;
-}
-
-.comite-banner h2 {
+.page-banner h2 {
   margin: 0;
   font-size: clamp(1.45rem, 2.4vw, 1.9rem);
   font-weight: 800;
   letter-spacing: 0.01em;
   line-height: 1.2;
+  text-transform: none;
+  color: #fff;
 }
 
-.comite-banner-lead,
-.comite-banner-meta {
+.page-banner-lead,
+.page-banner-meta {
   margin: 8px 0 0;
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.9rem;
   font-weight: 500;
 }
 
-.comite-banner-meta { font-weight: 700; }
+.page-banner-meta { font-weight: 700; }
 
 #comite-start:disabled {
   opacity: 1;
@@ -643,6 +636,7 @@ tr.is-discussing .read-time { color: var(--orange); }
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  margin-top: 16px;
 }
 
 .freq-sheet { padding: 16px; }
@@ -845,6 +839,8 @@ body.is-authed > .auth-gate { display: none; }
   border-radius: 12px;
   padding: 28px 24px;
 }
+
+.auth-card .brand { justify-content: center; margin-bottom: 16px; }
 
 .auth-card h1 { margin: 4px 0 12px; }
 
@@ -1930,6 +1926,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #view-frequencia,
   body.printing-ata #view-comite,
   body.printing-ata .ata-tipo,
+  body.printing-ata #view-ata .ata-head,
   body.printing-ata .freq-check:not(:has(input:checked)),
   body.printing-ata .freq-check input,
   body.printing-ata .topbar-actions,
