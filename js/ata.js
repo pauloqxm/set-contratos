@@ -386,7 +386,7 @@ const Ata = (() => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
     });
-    document.getElementById("ata-tipo").disabled = salva;
+    document.getElementById("ata-tipo").disabled = trava;
     document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens input, #ata-itens button, #ata-presenca-recente").forEach((field) => {
       field.disabled = trava;
     });
@@ -479,7 +479,17 @@ const Ata = (() => {
   }
 
   async function trocarTipo(tipo) {
-    if (draft.id) return;
+    if (draft.id) {
+      if (travada()) return;
+      readMeta();
+      draft.tipo = tipoDe(tipo);
+      saveDraft();
+      aplicarTipo();
+      renderItems();
+      loadList();
+      note("Tipo alterado. Conclua a ata para gravar a mudança.");
+      return;
+    }
     readMeta();
     const anterior = draft.tipo;
     draft.tipo = tipoDe(tipo);
@@ -755,6 +765,9 @@ const Ata = (() => {
     try {
       const data = await api("GET", { tipo: draft.tipo });
       const atas = (data.atas || []).filter((ata) => tipoDe(ata.tipo) === tipoDe(draft.tipo));
+      if (!data.versao && tipoDe(draft.tipo) === "diversa") {
+        note('A função "ata" publicada no Supabase é a versão antiga: ela não lista nem grava reuniões diversas. Publique a versão nova da função.', true);
+      }
       list.innerHTML = atas.length
         ? atas
             .map((ata) => {
@@ -833,7 +846,7 @@ const Ata = (() => {
     draft.inicio = horas.inicio;
     draft.fim = horas.fim;
     try {
-      const { id } = await api("POST", null, {
+      const resposta = await api("POST", null, {
         id: draft.id,
         tipo: draft.tipo,
         titulo: draft.titulo,
@@ -850,13 +863,19 @@ const Ata = (() => {
           anexo: anexo || "",
         })),
       });
-      draft.id = id;
+      draft.id = resposta.id;
       editando = false;
       pedindoToken = false;
       pendenteExcluir = null;
       saveDraft();
       const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      note(`Ata concluída às ${hora}. Os campos foram fechados.`);
+      if (!resposta.versao) {
+        note(`Ata gravada às ${hora}, mas a função "ata" publicada no Supabase é a versão antiga e gravou como contratos. Publique a versão nova da função e conclua a ata de novo.`, true);
+      } else if (tipoDe(resposta.tipo) !== tipoDe(draft.tipo)) {
+        note(`Ata gravada às ${hora}, mas o banco registrou o tipo "${resposta.tipo || "vazio"}". Rode de novo o ata.sql no Supabase.`, true);
+      } else {
+        note(`Ata concluída às ${hora}. Os campos foram fechados.`);
+      }
       loadList();
     } catch (error) {
       note(error.message, true);

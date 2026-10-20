@@ -29,6 +29,8 @@ function cors(req: Request): Record<string, string> {
   return headers;
 }
 
+const VERSAO = "2026-10-19-diversa";
+
 function tipoAta(valor: unknown): "comite" | "diversa" | "contratos" {
   const tipo = String(valor || "").trim().toLowerCase();
   if (tipo === "comite" || tipo === "diversa") return tipo;
@@ -139,7 +141,7 @@ Deno.serve(async (req) => {
         .order("atualizada_em", { ascending: false })
         .limit(50);
       if (error) return json(req, 500, { erro: error.message });
-      return json(req, 200, { atas: data });
+      return json(req, 200, { atas: data, versao: VERSAO });
     }
 
     const { data: ata, error } = await db.from("ata_reunioes").select("*").eq("id", id).maybeSingle();
@@ -190,7 +192,9 @@ Deno.serve(async (req) => {
       const { error: tipoError } = await db.from("ata_reunioes").update({ tipo }).eq("id", data);
       if (tipoError) return json(req, 500, { erro: tipoError.message });
     }
-    return json(req, 200, { id: data });
+    const { data: gravada, error: lerError } = await db.from("ata_reunioes").select("tipo").eq("id", data).maybeSingle();
+    if (lerError) return json(req, 500, { erro: lerError.message });
+    return json(req, 200, { id: data, tipo: gravada?.tipo ?? "", versao: VERSAO });
   }
 
   return json(req, 405, { erro: "Método não permitido." });
