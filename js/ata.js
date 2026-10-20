@@ -9,6 +9,38 @@ const Ata = (() => {
   let pedindoToken = false;
   let pendenteExcluir = null;
   const extrasVisiveis = new Set();
+  const extraCampos = [
+    {
+      campo: "responsaveis",
+      rotulo: "Responsáveis",
+      tipo: "text",
+      placeholder: "Quem ficou responsável",
+      svg: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M3.8 19c.6-3.2 2.8-5 5.2-5s4.6 1.8 5.2 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="9" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M20.4 18.5c-.4-2.2-1.8-3.5-3.4-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    },
+    {
+      campo: "encaminhamentos",
+      rotulo: "Encaminhamentos",
+      tipo: "textarea",
+      placeholder: "O que ficou combinado",
+      svg: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M5 12h10M5 17h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15 15.5 17.2 17.7 21 13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    },
+    {
+      campo: "anexo",
+      rotulo: "Anexo",
+      tipo: "url",
+      placeholder: "https://",
+      svg: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 8.2v8.5a3.3 3.3 0 0 0 6.6 0V8a2.2 2.2 0 1 0-4.4 0v8.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    },
+  ];
+
+  function semearExtras(itens) {
+    (itens || []).forEach((item) => {
+      extraCampos.forEach(({ campo }) => {
+        if (String(item[campo] || "").trim()) extrasVisiveis.add(extraId(item, campo));
+      });
+    });
+  }
+  semearExtras(draft.itens);
 
   function localISO(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -501,33 +533,49 @@ const Ata = (() => {
   }
 
   function extraAberto(item, campo) {
-    return Boolean(String(item[campo] || "").trim()) || extrasVisiveis.has(extraId(item, campo));
+    return extrasVisiveis.has(extraId(item, campo));
   }
 
-  function campoExtra(item, index, campo, rotulo, tipo, placeholder) {
-    if (!extraAberto(item, campo)) return "";
-    const valor = item[campo] || "";
-    const curto = campo !== "encaminhamentos";
-    const input = tipo === "textarea"
-      ? `<textarea data-campo="${campo}" data-index="${index}" placeholder="${esc(placeholder)}">${esc(valor)}</textarea>`
-      : `<input type="${tipo}" data-campo="${campo}" data-index="${index}" maxlength="${campo === "anexo" ? 500 : 240}" placeholder="${esc(placeholder)}" value="${esc(valor)}" />`;
-    const impresso = campo === "anexo" ? anexoHtml(item.anexo) : esc(valor || "—");
-    return `<label>${rotulo}
+  function campoPrint(item, extra) {
+    const valor = item[extra.campo] || "";
+    if (extraAberto(item, extra.campo) || !valor.trim()) return "";
+    const impresso = extra.campo === "anexo" ? anexoHtml(item.anexo) : esc(valor);
+    return `<div class="ata-campo-print-only">
+      <span class="ata-campo-print-label">${extra.rotulo}</span>
+      <span class="ata-texto-print${extra.campo === "encaminhamentos" ? "" : " is-curto"}">${impresso}</span>
+    </div>`;
+  }
+
+  function campoExtra(item, index, extra) {
+    if (!extraAberto(item, extra.campo)) return campoPrint(item, extra);
+    const valor = item[extra.campo] || "";
+    const input = extra.tipo === "textarea"
+      ? `<textarea data-campo="${extra.campo}" data-index="${index}" placeholder="${esc(extra.placeholder)}">${esc(valor)}</textarea>`
+      : `<input type="${extra.tipo}" data-campo="${extra.campo}" data-index="${index}" maxlength="${extra.campo === "anexo" ? 500 : 240}" placeholder="${esc(extra.placeholder)}" value="${esc(valor)}" />`;
+    const impresso = extra.campo === "anexo" ? anexoHtml(item.anexo) : esc(valor || "—");
+    return `<div class="ata-campo-extra">
+      <div class="ata-campo-head">
+        <span>${extra.rotulo}</span>
+        ${travada() ? "" : `<button type="button" class="ata-extra-fechar" data-fechar-campo="${extra.campo}" data-index="${index}" title="Recolher ${extra.rotulo}" aria-label="Recolher ${extra.rotulo}">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>`}
+      </div>
       ${input}
-      <span class="ata-texto-print${curto ? " is-curto" : ""}">${impresso}</span>
-    </label>`;
+      <span class="ata-texto-print${extra.campo === "encaminhamentos" ? "" : " is-curto"}">${impresso}</span>
+    </div>`;
   }
 
   function botoesExtra(item, index) {
     if (travada()) return "";
-    const extras = [
-      ["responsaveis", "Responsáveis"],
-      ["encaminhamentos", "Encaminhamentos"],
-      ["anexo", "Anexo"],
-    ].filter(([campo]) => !extraAberto(item, campo));
-    if (!extras.length) return "";
     return `<div class="ata-extra-acoes">
-      ${extras.map(([campo, rotulo]) => `<button type="button" class="ata-extra-btn" data-abrir-campo="${campo}" data-index="${index}">+ ${rotulo}</button>`).join("")}
+      ${extraCampos.map((extra) => {
+        const aberto = extraAberto(item, extra.campo);
+        const preenchido = Boolean(String(item[extra.campo] || "").trim());
+        return `<button type="button" class="ata-extra-btn${aberto ? " is-on" : ""}${preenchido ? " is-filled" : ""}" data-abrir-campo="${extra.campo}" data-index="${index}" aria-pressed="${aberto}" title="${aberto ? "Recolher" : "Adicionar"} ${extra.rotulo}">
+          ${extra.svg}
+          <span>${extra.rotulo}</span>
+        </button>`;
+      }).join("")}
     </div>`;
   }
 
@@ -557,9 +605,7 @@ const Ata = (() => {
               <textarea data-campo="texto" data-index="${index}" placeholder="O que foi falado sobre este ${item.ref ? "ponto" : "objeto"}">${esc(item.texto || "")}</textarea>
               <span class="ata-texto-print">${esc(item.texto || "")}</span>
             </label>
-            ${campoExtra(item, index, "responsaveis", "Responsáveis", "text", "Quem ficou responsável")}
-            ${campoExtra(item, index, "encaminhamentos", "Encaminhamentos", "textarea", "O que ficou combinado")}
-            ${campoExtra(item, index, "anexo", "Link de anexo", "url", "https://")}
+            ${extraCampos.map((extra) => campoExtra(item, index, extra)).join("")}
             ${botoesExtra(item, index)}
           </div>
         </article>`;
@@ -645,6 +691,8 @@ const Ata = (() => {
       editando = false;
       pedindoToken = false;
       pendenteExcluir = null;
+      extrasVisiveis.clear();
+      semearExtras(draft.itens);
       saveDraft();
       aplicarTipo();
       fillMeta();
@@ -1041,13 +1089,18 @@ const Ata = (() => {
       saveDraft();
     });
     items.addEventListener("click", (event) => {
-      const abrir = event.target.closest("button[data-abrir-campo]");
-      if (abrir) {
-        const item = draft.itens[Number(abrir.dataset.index)];
+      const extraBtn = event.target.closest("button[data-abrir-campo], button[data-fechar-campo]");
+      if (extraBtn) {
+        const campo = extraBtn.dataset.abrirCampo || extraBtn.dataset.fecharCampo;
+        const item = draft.itens[Number(extraBtn.dataset.index)];
         if (!item || travada()) return;
-        extrasVisiveis.add(extraId(item, abrir.dataset.abrirCampo));
+        const id = extraId(item, campo);
+        if (extrasVisiveis.has(id)) extrasVisiveis.delete(id);
+        else extrasVisiveis.add(id);
         renderItems();
-        document.querySelector(`[data-campo="${abrir.dataset.abrirCampo}"][data-index="${abrir.dataset.index}"]`)?.focus();
+        if (extrasVisiveis.has(id)) {
+          document.querySelector(`[data-campo="${campo}"][data-index="${extraBtn.dataset.index}"]`)?.focus();
+        }
         return;
       }
       const button = event.target.closest("button[data-remove]");
@@ -1072,6 +1125,7 @@ const Ata = (() => {
       editando = true;
       pedindoToken = false;
       pendenteExcluir = null;
+      extrasVisiveis.clear();
       saveDraft();
       fillMeta();
       aplicarTipo();
