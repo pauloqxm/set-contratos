@@ -8,6 +8,7 @@ const Ata = (() => {
   let editando = !draft.id;
   let pedindoToken = false;
   let pendenteExcluir = null;
+  const extrasVisiveis = new Set();
 
   function localISO(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -495,6 +496,41 @@ const Ata = (() => {
     return added;
   }
 
+  function extraId(item, campo) {
+    return `${item.key || item.ref || item.objeto}:${campo}`;
+  }
+
+  function extraAberto(item, campo) {
+    return Boolean(String(item[campo] || "").trim()) || extrasVisiveis.has(extraId(item, campo));
+  }
+
+  function campoExtra(item, index, campo, rotulo, tipo, placeholder) {
+    if (!extraAberto(item, campo)) return "";
+    const valor = item[campo] || "";
+    const curto = campo !== "encaminhamentos";
+    const input = tipo === "textarea"
+      ? `<textarea data-campo="${campo}" data-index="${index}" placeholder="${esc(placeholder)}">${esc(valor)}</textarea>`
+      : `<input type="${tipo}" data-campo="${campo}" data-index="${index}" maxlength="${campo === "anexo" ? 500 : 240}" placeholder="${esc(placeholder)}" value="${esc(valor)}" />`;
+    const impresso = campo === "anexo" ? anexoHtml(item.anexo) : esc(valor || "—");
+    return `<label>${rotulo}
+      ${input}
+      <span class="ata-texto-print${curto ? " is-curto" : ""}">${impresso}</span>
+    </label>`;
+  }
+
+  function botoesExtra(item, index) {
+    if (travada()) return "";
+    const extras = [
+      ["responsaveis", "Responsáveis"],
+      ["encaminhamentos", "Encaminhamentos"],
+      ["anexo", "Anexo"],
+    ].filter(([campo]) => !extraAberto(item, campo));
+    if (!extras.length) return "";
+    return `<div class="ata-extra-acoes">
+      ${extras.map(([campo, rotulo]) => `<button type="button" class="ata-extra-btn" data-abrir-campo="${campo}" data-index="${index}">+ ${rotulo}</button>`).join("")}
+    </div>`;
+  }
+
   function renderItems() {
     const host = document.getElementById("ata-itens");
     document.getElementById("ata-vazio").hidden = draft.itens.length > 0;
@@ -521,18 +557,10 @@ const Ata = (() => {
               <textarea data-campo="texto" data-index="${index}" placeholder="O que foi falado sobre este ${item.ref ? "ponto" : "objeto"}">${esc(item.texto || "")}</textarea>
               <span class="ata-texto-print">${esc(item.texto || "")}</span>
             </label>
-            <label>Responsáveis
-              <input type="text" data-campo="responsaveis" data-index="${index}" maxlength="240" placeholder="Quem ficou responsável" value="${esc(item.responsaveis || "")}" />
-              <span class="ata-texto-print is-curto">${esc(item.responsaveis || "—")}</span>
-            </label>
-            <label>Encaminhamentos
-              <textarea data-campo="encaminhamentos" data-index="${index}" placeholder="O que ficou combinado">${esc(item.encaminhamentos || "")}</textarea>
-              <span class="ata-texto-print">${esc(item.encaminhamentos || "—")}</span>
-            </label>
-            <label>Link de anexo
-              <input type="url" data-campo="anexo" data-index="${index}" maxlength="500" placeholder="https://" value="${esc(item.anexo || "")}" />
-              <span class="ata-texto-print is-curto">${anexoHtml(item.anexo)}</span>
-            </label>
+            ${campoExtra(item, index, "responsaveis", "Responsáveis", "text", "Quem ficou responsável")}
+            ${campoExtra(item, index, "encaminhamentos", "Encaminhamentos", "textarea", "O que ficou combinado")}
+            ${campoExtra(item, index, "anexo", "Link de anexo", "url", "https://")}
+            ${botoesExtra(item, index)}
           </div>
         </article>`;
       })
@@ -1013,6 +1041,15 @@ const Ata = (() => {
       saveDraft();
     });
     items.addEventListener("click", (event) => {
+      const abrir = event.target.closest("button[data-abrir-campo]");
+      if (abrir) {
+        const item = draft.itens[Number(abrir.dataset.index)];
+        if (!item || travada()) return;
+        extrasVisiveis.add(extraId(item, abrir.dataset.abrirCampo));
+        renderItems();
+        document.querySelector(`[data-campo="${abrir.dataset.abrirCampo}"][data-index="${abrir.dataset.index}"]`)?.focus();
+        return;
+      }
       const button = event.target.closest("button[data-remove]");
       if (!button) return;
       draft.itens.splice(Number(button.dataset.remove), 1);

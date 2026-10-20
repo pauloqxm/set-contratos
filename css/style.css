@@ -912,11 +912,12 @@ tr.is-discussing .read-time { color: var(--orange); }
 .ata-item textarea,
 .ata-item input {
   width: 100%;
-  font: inherit;
+  font-family: inherit;
   font-size: 0.92rem;
   font-weight: 600;
+  letter-spacing: normal;
+  word-spacing: normal;
   text-transform: none;
-  letter-spacing: 0;
   color: var(--ink);
   border: 1px solid #c8cacb;
   border-radius: 8px;
@@ -924,9 +925,42 @@ tr.is-discussing .read-time { color: var(--orange); }
   background: var(--white);
 }
 
+.ata-extra-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ata-extra-btn {
+  border: 1px dashed #c8cacb;
+  background: var(--white);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.ata-extra-btn:hover {
+  border-color: var(--menu-accent);
+  color: var(--menu-accent);
+  background: var(--green-soft);
+}
+
 .ata-item textarea {
   min-height: 88px;
   resize: vertical;
+}
+
+.ata-item textarea::placeholder,
+.ata-item input::placeholder {
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-transform: none;
+  font-weight: 500;
+  color: #8a8c8e;
 }
 
 .ata-print-value,
@@ -2062,6 +2096,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-sugestoes,
   body.printing-ata .ata-salvas,
   body.printing-ata .ata-item .linkish,
+  body.printing-ata .ata-extra-acoes,
   body.printing-ata #ata-presenca-recente,
   body.printing-ata #ata-token-dialog,
   body.printing-ata #comite-ponto-dialog,
