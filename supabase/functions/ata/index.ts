@@ -29,6 +29,12 @@ function cors(req: Request): Record<string, string> {
   return headers;
 }
 
+function tipoAta(valor: unknown): "comite" | "diversa" | "contratos" {
+  const tipo = String(valor || "").trim().toLowerCase();
+  if (tipo === "comite" || tipo === "diversa") return tipo;
+  return "contratos";
+}
+
 function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -124,8 +130,7 @@ Deno.serve(async (req) => {
     if (params.get("pauta") === "comite") return pautaComite(req);
     const id = params.get("id");
     if (!id) {
-      const pedido = params.get("tipo");
-      const tipo = pedido === "comite" || pedido === "diversa" ? pedido : "contratos";
+      const tipo = tipoAta(params.get("tipo"));
       const { data, error } = await db
         .from("ata_reunioes")
         .select("id, titulo, data, tipo, inicio, fim, autor_nome, responsavel_nome, atualizada_em")
@@ -173,12 +178,18 @@ Deno.serve(async (req) => {
       const recusa = await exigirToken(req);
       if (recusa) return json(req, 403, { erro: recusa });
     }
+    const tipo = tipoAta(body.tipo);
+    body.tipo = tipo;
     const { data, error } = await db.rpc("ata_salvar", {
       p_ata: body,
       p_autor_sub: user.sub,
       p_autor_nome: user.nome,
     });
     if (error) return json(req, 500, { erro: error.message });
+    if (tipo !== "contratos") {
+      const { error: tipoError } = await db.from("ata_reunioes").update({ tipo }).eq("id", data);
+      if (tipoError) return json(req, 500, { erro: tipoError.message });
+    }
     return json(req, 200, { id: data });
   }
 

@@ -2,6 +2,9 @@
 -- Executar no Supabase: SQL Editor → New query → Run
 -- Projeto: ftuycoafwraxaachidlh
 --
+-- Reexecute este arquivo sempre que o tipo da ata mudar.
+-- Precisa gravar 'diversa' além de 'contratos' e 'comite'.
+--
 -- Não mexe nas tabelas do SET Projetos. Reexecutar é seguro e não apaga atas.
 -- RLS ligado e sem políticas: a chave publicável não lê nem grava aqui.
 -- Só a função "ata" (Edge Function, com a chave de serviço) acessa as tabelas.
@@ -61,9 +64,9 @@ AS $$
 DECLARE
     v_id UUID := NULLIF(p_ata->>'id', '')::UUID;
     v_resp_nome TEXT := COALESCE(NULLIF(TRIM(p_ata->>'responsavel_nome'), ''), '');
-    v_tipo TEXT := CASE
-        WHEN p_ata->>'tipo' = 'comite' THEN 'comite'
-        WHEN p_ata->>'tipo' = 'diversa' THEN 'diversa'
+    v_tipo TEXT := CASE btrim(lower(COALESCE(p_ata->>'tipo', '')))
+        WHEN 'comite' THEN 'comite'
+        WHEN 'diversa' THEN 'diversa'
         ELSE 'contratos'
     END;
 BEGIN
@@ -122,3 +125,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.ata_salvar(JSONB, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ata_salvar(JSONB, TEXT, TEXT) TO service_role;
+
+-- Deve retornar true. Se vier false, a função antiga ainda está no banco.
+SELECT pg_get_functiondef('public.ata_salvar(jsonb, text, text)'::regprocedure)
+    ILIKE '%diversa%' AS funcao_aceita_diversa;
