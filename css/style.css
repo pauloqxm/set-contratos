@@ -423,6 +423,32 @@ h1 {
 
 .comite-bar .ata-search { min-width: min(100%, 260px); }
 
+.comite-add {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--orange);
+  color: #fff;
+  font: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.comite-add:hover { background: #d94c16; }
+
+.comite-card.is-avulso { border-left-color: var(--orange); }
+
+.comite-avulso-texto {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .comite-bar .meeting {
   margin: 0;
   padding: 0;
@@ -630,7 +656,7 @@ tr.is-discussing .read-time { color: var(--orange); }
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .ata-search select, .ata-token-form input, .freq-bar select, .freq-bar input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .ata-search select, .ata-token-form input, .ata-token-form textarea, .freq-bar select, .freq-bar input, .ata-item textarea {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -1716,6 +1742,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 
 .badge-blue { background: var(--blue-soft); color: var(--blue); }
 
+.badge-orange { background: var(--orange-soft); color: #c2410c; }
+
 .addon {
   display: inline-block;
   margin-left: 6px;
@@ -2007,6 +2035,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-item .linkish,
   body.printing-ata #ata-presenca-recente,
   body.printing-ata #ata-token-dialog,
+  body.printing-ata #comite-ponto-dialog,
   body.printing-ata .ata-meta input,
   body.printing-ata .ata-item textarea { display: none !important; }
   body.printing-ata,

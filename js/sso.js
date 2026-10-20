@@ -140,7 +140,7 @@ const SSO = (() => {
   }
 
   function limparSessaoLocal() {
-    ["set-reuniao", "set-reuniao-comite", "set-ata-rascunho", "set-ata-token", "set-vista", "set-ata-voltar", idleKey].forEach((key) => {
+    ["set-reuniao", "set-reuniao-comite", "set-pauta-avulsa", "set-ata-rascunho", "set-ata-token", "set-vista", "set-ata-voltar", idleKey].forEach((key) => {
       sessionStorage.removeItem(key);
     });
   }

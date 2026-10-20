@@ -1,8 +1,10 @@
 /* Aba do Comitê Executivo: pauta semanal a partir dos projetos ativos, com temporizador e ticket por projeto. */
 const Comite = (() => {
   const meetingKey = "set-reuniao-comite";
+  const extrasKey = "set-pauta-avulsa";
   const meeting = { startedAt: null, endedAt: null, inicio: "", fim: "", timer: null, checks: new Map(), currentId: null, currentStartedAt: null };
   let projetos = [];
+  let extras = loadExtras();
   let filtro = "";
   const recolhidos = new Set();
   let carregando = null;
@@ -42,6 +44,28 @@ const Comite = (() => {
       if (!atual || String(item.atualizado_em || "") > String(atual.atualizado_em || "")) grupos.set(frente, item);
     });
     return [...grupos.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+  }
+
+  function loadExtras() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(extrasKey) || "[]");
+      if (Array.isArray(saved)) {
+        return saved
+          .filter((item) => item && item.id && item.nome)
+          .map((item) => ({ id: String(item.id), nome: String(item.nome), descricao: String(item.descricao || ""), avulso: true, itens: [] }));
+      }
+    } catch (error) {
+      /* rascunho inválido volta vazio */
+    }
+    return [];
+  }
+
+  function saveExtras() {
+    sessionStorage.setItem(extrasKey, JSON.stringify(extras.map(({ id, nome, descricao }) => ({ id, nome, descricao }))));
+  }
+
+  function pontos() {
+    return extras.concat(projetos);
   }
 
   function note(text, isError) {
@@ -164,7 +188,7 @@ const Comite = (() => {
     const lista = visiveis();
     const lidos = lista.filter((projeto) => meeting.checks.has(projeto.id)).length;
     document.getElementById("comite-read").textContent = lista.length
-      ? `${lidos} de ${lista.length} projetos discutidos`
+      ? `${lidos} de ${lista.length} pontos discutidos`
       : "0 discutidos";
     const on = meeting.startedAt != null && !meeting.endedAt;
     box.classList.toggle("is-on", meeting.startedAt != null);
@@ -230,7 +254,38 @@ const Comite = (() => {
     </tr>`;
   }
 
+  function cardAvulso(ponto) {
+    const marcado = meeting.checks.has(ponto.id);
+    const discutindo = meeting.currentId === ponto.id;
+    const recolhido = recolhidos.has(ponto.id);
+    const rotulo = recolhido ? "Mostrar itens" : "Recolher itens";
+    const corpo = ponto.descricao
+      ? `<p class="comite-avulso-texto">${esc(ponto.descricao)}</p>`
+      : '<p class="hint">Ponto avulso desta reunião. O registro fica na ata ao concluir.</p>';
+    return `<article class="panel comite-card is-avulso${marcado ? " is-read" : ""}${discutindo ? " is-discussing" : ""}${recolhido ? " is-collapsed" : ""}" data-id="${esc(ponto.id)}">
+      <header class="comite-card-head">
+        <div class="comite-lead">
+          <label class="read-check" title="Iniciar discussão deste ponto">
+            <input type="checkbox" class="js-comite-check" data-id="${esc(ponto.id)}" ${marcado ? "checked" : ""} aria-label="Iniciar discussão de ${esc(ponto.nome)}" />
+            <span class="read-time">${esc(pontoRotulo(ponto.id))}</span>
+          </label>
+          <button type="button" class="comite-toggle" data-toggle="${esc(ponto.id)}" aria-expanded="${recolhido ? "false" : "true"}" title="${rotulo}" aria-label="${rotulo}">${recolhido ? "▸" : "▾"}</button>
+        </div>
+        <div class="comite-card-title">
+          <h3>${esc(ponto.nome)}</h3>
+          <p class="hint">Ponto adicionado nesta reunião</p>
+        </div>
+        <div class="comite-resumo">
+          <span class="badge badge-orange">Pauta extra</span>
+          <button type="button" class="linkish" data-remove-avulso="${esc(ponto.id)}">Tirar</button>
+        </div>
+      </header>
+      <div class="comite-corpo">${corpo}</div>
+    </article>`;
+  }
+
   function cardHtml(projeto, dia) {
+    if (projeto.avulso) return cardAvulso(projeto);
     const marcado = meeting.checks.has(projeto.id);
     const discutindo = meeting.currentId === projeto.id;
     const vencidos = projeto.itens.filter((item) => item.prazo && String(item.prazo).slice(0, 10) < dia).length;
@@ -271,17 +326,23 @@ const Comite = (() => {
   }
 
   function visiveis() {
-    return filtro ? projetos.filter((projeto) => projeto.id === filtro) : projetos;
+    if (filtro === "avulsos") return extras;
+    if (filtro) return pontos().filter((ponto) => ponto.id === filtro);
+    return pontos();
   }
 
   function preencherFiltro() {
     const select = document.getElementById("comite-filtro");
     if (!select) return;
     const atual = filtro;
-    select.innerHTML = `<option value="">Todos os projetos</option>${projetos
+    const avulsos = extras.length
+      ? `<option value="avulsos">Pontos adicionados (${extras.length})</option>`
+      : "";
+    select.innerHTML = `<option value="">Todos os pontos</option>${avulsos}${projetos
       .map((projeto) => `<option value="${esc(projeto.id)}">${esc(projeto.nome)}</option>`)
       .join("")}`;
-    select.value = projetos.some((projeto) => projeto.id === atual) ? atual : "";
+    const ids = new Set(["", "avulsos", ...projetos.map((projeto) => projeto.id), ...extras.map((item) => item.id)]);
+    select.value = ids.has(atual) ? atual : "";
     filtro = select.value;
   }
 
@@ -330,11 +391,17 @@ const Comite = (() => {
     host.innerHTML = lista.length
       ? lista.map((projeto) => cardHtml(projeto, dia)).join("")
       : carregado
-        ? `<p class="hint">${projetos.length ? "Nenhum projeto corresponde ao filtro." : "Nenhum projeto ativo na pauta."}</p>`
+        ? `<p class="hint">${pontos().length ? "Nenhum ponto corresponde ao filtro." : "Nenhum projeto ativo na pauta. Use + para adicionar um tema."}</p>`
         : '<p class="hint">Carregando a pauta…</p>';
-    const total = lista.reduce((soma, projeto) => soma + projeto.itens.length, 0);
-    document.getElementById("comite-count").textContent = lista.length
-      ? `${lista.length} projeto${lista.length > 1 ? "s" : ""} · ${total} itens em aberto`
+    const nprojetos = lista.filter((ponto) => !ponto.avulso).length;
+    const navulsos = lista.filter((ponto) => ponto.avulso).length;
+    const total = lista.reduce((soma, projeto) => soma + (projeto.itens || []).length, 0);
+    const partes = [];
+    if (nprojetos) partes.push(`${nprojetos} projeto${nprojetos > 1 ? "s" : ""}`);
+    if (navulsos) partes.push(`${navulsos} ponto${navulsos > 1 ? "s" : ""} extra${navulsos > 1 ? "s" : ""}`);
+    if (total) partes.push(`${total} itens em aberto`);
+    document.getElementById("comite-count").textContent = partes.length
+      ? partes.join(" · ")
       : carregado ? "" : "Carregando a pauta…";
     paintMeeting();
     pintarRecolher();
@@ -379,23 +446,85 @@ const Comite = (() => {
       filtro = event.target.value;
       render();
     });
+    document.getElementById("comite-add").addEventListener("click", abrirDialogo);
+    document.getElementById("comite-ponto-form").addEventListener("submit", adicionarPonto);
+    document.getElementById("comite-ponto-cancel").addEventListener("click", fecharDialogo);
+    document.getElementById("comite-ponto-close").addEventListener("click", fecharDialogo);
+    const dialogo = document.getElementById("comite-ponto-dialog");
+    dialogo.addEventListener("click", (event) => {
+      if (event.target === dialogo) fecharDialogo();
+    });
     document.getElementById("comite-recolher").addEventListener("click", recolherTodos);
     document.getElementById("comite-pauta").addEventListener("change", (event) => {
       const box = event.target.closest(".js-comite-check");
       if (box) marcar(box.dataset.id, box.checked);
     });
     document.getElementById("comite-pauta").addEventListener("click", (event) => {
+      const tirar = event.target.closest("button[data-remove-avulso]");
+      if (tirar) {
+        removerPonto(tirar.dataset.removeAvulso);
+        return;
+      }
       const button = event.target.closest("button[data-toggle]");
       if (button) recolher(button.dataset.toggle);
     });
     paintMeeting();
   });
 
+  function erroPonto(texto) {
+    const erro = document.getElementById("comite-ponto-erro");
+    erro.hidden = !texto;
+    erro.textContent = texto || "";
+  }
+
+  function abrirDialogo() {
+    erroPonto("");
+    document.getElementById("comite-ponto-titulo").value = "";
+    document.getElementById("comite-ponto-desc").value = "";
+    document.getElementById("comite-ponto-dialog").showModal();
+    document.getElementById("comite-ponto-titulo").focus();
+  }
+
+  function fecharDialogo() {
+    const dialogo = document.getElementById("comite-ponto-dialog");
+    if (dialogo.open) dialogo.close();
+    erroPonto("");
+  }
+
+  function adicionarPonto(event) {
+    event.preventDefault();
+    const nome = document.getElementById("comite-ponto-titulo").value.replace(/\s+/g, " ").trim();
+    const descricao = document.getElementById("comite-ponto-desc").value.replace(/\s+/g, " ").trim();
+    if (!nome) {
+      erroPonto("Informe o título do ponto de pauta.");
+      return;
+    }
+    extras.push({ id: `avulso-${Date.now()}`, nome, descricao, avulso: true, itens: [] });
+    saveExtras();
+    preencherFiltro();
+    fecharDialogo();
+    render();
+  }
+
+  function removerPonto(id) {
+    extras = extras.filter((item) => item.id !== id);
+    if (meeting.currentId === id) {
+      meeting.currentId = null;
+      meeting.currentStartedAt = null;
+    }
+    meeting.checks.delete(id);
+    recolhidos.delete(id);
+    saveExtras();
+    saveMeeting();
+    preencherFiltro();
+    render();
+  }
+
   return {
     show,
     load,
     meeting: () => meeting,
     elapsed,
-    projetos: () => projetos,
+    projetos: pontos,
   };
 })();

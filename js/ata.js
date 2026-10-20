@@ -362,11 +362,11 @@ const Ata = (() => {
     document.getElementById("ata-subtitulo").textContent = ehComite
       ? "Descreva o que foi falado sobre cada projeto. O rascunho fica neste navegador até ser salvo."
       : "Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.";
-    document.getElementById("ata-from-checks").textContent = ehComite ? "Trazer projetos discutidos" : "Trazer contratos lidos";
+    document.getElementById("ata-from-checks").textContent = ehComite ? "Trazer pontos discutidos" : "Trazer contratos lidos";
     document.getElementById("ata-busca-rotulo").textContent = ehComite ? "Incluir projeto" : "Incluir contrato";
     document.getElementById("ata-busca").placeholder = ehComite ? "Nome do projeto" : "Objeto, NUP, contrato ou contratada";
     document.getElementById("ata-vazio").textContent = ehComite
-      ? "Nenhum projeto na ata. Traga os projetos discutidos ou busque um projeto."
+      ? "Nenhum ponto na ata. Traga os pontos discutidos ou busque um projeto."
       : "Nenhum objeto na ata. Traga os contratos marcados como lidos ou busque um contrato.";
   }
 
@@ -484,7 +484,11 @@ const Ata = (() => {
     document.getElementById("ata-vazio").hidden = draft.itens.length > 0;
     host.innerHTML = draft.itens
       .map((item, index) => {
-        const meta = item.ref ? "Projeto" : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
+        const meta = String(item.ref || "").startsWith("avulso-")
+          ? "Pauta extra"
+          : item.ref
+            ? "Projeto"
+            : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
         return `<article class="ata-item">
           <header>
             <div>
@@ -520,7 +524,7 @@ const Ata = (() => {
         : projetos.filter((projeto) => `${projeto.nome} ${projeto.id}`.toLocaleLowerCase("pt-BR").includes(term)).slice(0, 8);
       list.hidden = achados.length === 0;
       list.innerHTML = achados
-        .map((projeto) => `<li><button type="button" data-add-projeto="${esc(projeto.id)}"><strong>${esc(projeto.nome)}</strong> — ${projeto.itens.length} itens em aberto</button></li>`)
+        .map((projeto) => `<li><button type="button" data-add-projeto="${esc(projeto.id)}"><strong>${esc(projeto.nome)}</strong> — ${projeto.avulso ? "Ponto da pauta" : `${projeto.itens.length} itens em aberto`}</button></li>`)
         .join("");
       return;
     }
@@ -798,7 +802,11 @@ const Ata = (() => {
       ),
     ]];
     draft.itens.forEach((item) => {
-      const meta = item.ref ? "Projeto" : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
+      const meta = String(item.ref || "").startsWith("avulso-")
+        ? "Pauta extra"
+        : item.ref
+          ? "Projeto"
+          : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
       const partes = String(item.texto || "").split(/\n/);
       const texto = (partes.some((linha) => linha.trim()) ? partes : [" "])
         .map((linha) => paragrafo(linha, { depois: "40" }))
@@ -908,7 +916,7 @@ const Ata = (() => {
         const empty = document.getElementById("ata-vazio");
         empty.hidden = false;
         empty.textContent = comite()
-          ? "Nenhum projeto foi marcado como discutido na reunião do Comitê."
+          ? "Nenhum ponto foi marcado como discutido na reunião do Comitê."
           : "Nenhum contrato foi marcado como lido nesta reunião.";
       }
     });

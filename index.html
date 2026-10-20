@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=17" />
+  <link rel="stylesheet" href="css/style.css?v=18" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -421,11 +421,11 @@
     <section id="view-comite" class="view-comite" hidden>
       <header class="page-banner">
         <h2>Pauta do Comitê Executivo</h2>
-        <p class="page-banner-lead">Cada projeto ativo é um ponto da pauta semanal, com os itens ainda em aberto.</p>
+        <p class="page-banner-lead">Cada projeto ativo é um ponto da pauta. Use + para incluir outros temas desta reunião.</p>
         <p id="comite-count" class="page-banner-meta" aria-live="polite"></p>
       </header>
       <div class="comite-bar">
-        <label class="ata-search">Projeto
+        <label class="ata-search">Ponto
           <select id="comite-filtro" aria-label="Filtrar projetos da pauta">
             <option value="">Todos os projetos</option>
           </select>
@@ -436,6 +436,7 @@
           <span id="comite-clock" class="meeting-clock">00:00:00</span>
           <span id="comite-read" class="meeting-read">0 discutidos</span>
         </div>
+        <button type="button" id="comite-add" class="comite-add" title="Adicionar ponto de pauta" aria-label="Adicionar ponto de pauta">+</button>
         <button type="button" id="comite-recolher" class="btn-ghost btn-small">Mostrar itens</button>
         <button type="button" id="comite-refresh" class="btn-ghost btn-small">Atualizar pauta</button>
       </div>
@@ -622,6 +623,30 @@
     </form>
   </dialog>
 
+  <dialog id="comite-ponto-dialog" class="modal ata-token-dialog" aria-labelledby="comite-ponto-title">
+    <div class="modal-top">
+      <div>
+        <p class="eyebrow">Pauta</p>
+        <h2 id="comite-ponto-title">Novo ponto de pauta</h2>
+        <p class="hint">Tema avulso desta reunião. Entra na ata ao concluir.</p>
+      </div>
+      <button type="button" id="comite-ponto-close" class="icon-btn" aria-label="Fechar">×</button>
+    </div>
+    <form id="comite-ponto-form" class="ata-token-form">
+      <label>Título
+        <input id="comite-ponto-titulo" type="text" maxlength="160" required autocomplete="off" />
+      </label>
+      <label>Descrição
+        <textarea id="comite-ponto-desc" rows="3" maxlength="500" placeholder="Opcional"></textarea>
+      </label>
+      <p id="comite-ponto-erro" class="banner is-error" hidden></p>
+      <div class="ata-token-actions">
+        <button type="button" id="comite-ponto-cancel" class="btn-ghost btn-small">Cancelar</button>
+        <button type="submit" class="btn-run btn-small">Adicionar</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="modal" class="modal" aria-labelledby="modal-title">
     <div class="modal-top">
       <div>
@@ -643,12 +668,12 @@
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/oidc-client-ts@3.1.0/dist/browser/oidc-client-ts.min.js"></script>
   <script defer src="js/config.js"></script>
-  <script defer src="js/sso.js?v=2"></script>
+  <script defer src="js/sso.js?v=3"></script>
   <script defer src="js/data.js"></script>
   <script defer src="js/charts.js"></script>
   <script defer src="js/app.js?v=2"></script>
   <script defer src="js/frequencia.js"></script>
-  <script defer src="js/comite.js?v=5"></script>
-  <script defer src="js/ata.js?v=15"></script>
+  <script defer src="js/comite.js?v=6"></script>
+  <script defer src="js/ata.js?v=16"></script>
 </body>
 </html>
