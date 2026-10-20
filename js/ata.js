@@ -148,7 +148,7 @@ const Ata = (() => {
     if (response.status === 403) {
       sessionStorage.removeItem(tokenKey);
       aplicarTrava();
-      throw new Error(data.erro || "O token de edição não confere.");
+      throw new Error(data.erro || "O Supabase recusou a operação (403) antes de conferir o token.");
     }
     if (!response.ok) throw new Error(data.erro || `O banco respondeu com erro ${response.status}.`);
     return data;
@@ -902,7 +902,7 @@ const Ata = (() => {
       return;
     }
     if (!response.ok) {
-      erroToken(response.status === 404 ? "O token de edição só funciona no site publicado." : "O token de edição não confere.");
+      erroToken(response.status === 404 ? "O token de edição só funciona no site publicado." : `O token não confere com o deste site (${location.host}).`);
       return;
     }
     sessionStorage.setItem(tokenKey, token);

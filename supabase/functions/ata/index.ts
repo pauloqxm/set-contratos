@@ -44,23 +44,35 @@ function json(req: Request, status: number, body: unknown): Response {
   });
 }
 
+function urlsDoToken(req: Request): string[] {
+  const urls: string[] = [];
+  const origin = (req.headers.get("origin") ?? "").replace(/\/$/, "");
+  if (ORIGINS.includes(origin) && origin.startsWith("https://")) urls.push(`${origin}/api/validar-token`);
+  const fixa = Deno.env.get("ATA_TOKEN_URL") ?? "https://set-contratos.up.railway.app/api/validar-token";
+  if (!urls.includes(fixa)) urls.push(fixa);
+  return urls;
+}
+
 async function exigirToken(req: Request): Promise<string | null> {
   const token = (req.headers.get("x-ata-token") ?? "").trim();
   if (!token) return "Para alterar ou excluir uma ata salva, informe o token de edição.";
-  const url = Deno.env.get("ATA_TOKEN_URL") ?? "https://set-contratos.up.railway.app/api/validar-token";
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "x-ata-token": token },
-      redirect: "manual",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (response.status === 204) return null;
-    if (response.status === 403) return "O token de edição não confere.";
-  } catch {
-    /* o site que guarda o token não respondeu */
+  const recusas: string[] = [];
+  for (const url of urlsDoToken(req)) {
+    const host = new URL(url).host;
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "x-ata-token": token },
+        redirect: "manual",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (response.status === 204) return null;
+      recusas.push(response.status === 403 ? `${host} recusou o token` : `${host} respondeu ${response.status}`);
+    } catch {
+      recusas.push(`${host} não respondeu`);
+    }
   }
-  return "Não foi possível confirmar o token de edição.";
+  return `A função da ata não confirmou o token (${recusas.join("; ")}).`;
 }
 
 function audiencia(valor: unknown): string[] {
