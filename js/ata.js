@@ -744,17 +744,23 @@ const Ata = (() => {
       .join("");
   }
 
+  function rotuloLista(ata) {
+    const data = ata.data ? new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR") : "";
+    const hora = String(ata.fim || "").replace("—", "").trim();
+    return hora ? `${data} ${hora}` : data;
+  }
+
   async function loadList() {
     const list = document.getElementById("ata-lista");
     try {
       const data = await api("GET", { tipo: draft.tipo });
-      list.innerHTML = data.atas.length
-        ? data.atas
+      const atas = (data.atas || []).filter((ata) => tipoDe(ata.tipo) === tipoDe(draft.tipo));
+      list.innerHTML = atas.length
+        ? atas
             .map((ata) => {
-              const when = ata.data ? new Date(`${ata.data}T12:00:00`).toLocaleDateString("pt-BR") : "";
               const current = ata.id === draft.id ? " is-on" : "";
               const who = ata.responsavel_nome ? `Responsável: ${ata.responsavel_nome}` : ata.autor_nome || "";
-              return `<li class="ata-salva-item"><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button><button type="button" class="btn-danger btn-small" data-delete="${esc(ata.id)}">Excluir</button></li>`;
+              return `<li class="ata-salva-item"><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(rotuloLista(ata))}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button><button type="button" class="btn-danger btn-small" data-delete="${esc(ata.id)}">Excluir</button></li>`;
             })
             .join("")
         : `<li class="hint">Nenhuma ata ${comite() ? "do Comitê Executivo" : diversa() ? "de reunião diversa" : "de contratos"} salva ainda.</li>`;

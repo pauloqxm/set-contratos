@@ -124,12 +124,11 @@ Deno.serve(async (req) => {
     if (params.get("pauta") === "comite") return pautaComite(req);
     const id = params.get("id");
     if (!id) {
-      const tipo = params.get("tipo") === "comite" || params.get("tipo") === "diversa"
-        ? params.get("tipo")
-        : "contratos";
+      const pedido = params.get("tipo");
+      const tipo = pedido === "comite" || pedido === "diversa" ? pedido : "contratos";
       const { data, error } = await db
         .from("ata_reunioes")
-        .select("id, titulo, data, tipo, autor_nome, responsavel_nome, atualizada_em")
+        .select("id, titulo, data, tipo, inicio, fim, autor_nome, responsavel_nome, atualizada_em")
         .eq("tipo", tipo)
         .order("data", { ascending: false })
         .order("atualizada_em", { ascending: false })
