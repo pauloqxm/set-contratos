@@ -38,6 +38,9 @@ ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS fim TEXT NOT NULL DEFAU
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'contratos';
 -- ref: id do projeto nas atas do Comitê.
 ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS ref TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS responsaveis TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS encaminhamentos TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS anexo TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_data ON public.ata_reunioes(data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_tipo ON public.ata_reunioes(tipo, data DESC);
@@ -93,7 +96,7 @@ BEGIN
         DELETE FROM ata_itens WHERE reuniao_id = v_id;
     END IF;
 
-    INSERT INTO ata_itens (reuniao_id, ordem, nup, contrato, contratada, objeto, tempo, texto, ref)
+    INSERT INTO ata_itens (reuniao_id, ordem, nup, contrato, contratada, objeto, tempo, texto, ref, responsaveis, encaminhamentos, anexo)
     SELECT
         v_id,
         (item.ordinality - 1)::INTEGER,
@@ -103,7 +106,10 @@ BEGIN
         COALESCE(item.value->>'objeto', ''),
         COALESCE(item.value->>'tempo', ''),
         COALESCE(item.value->>'texto', ''),
-        COALESCE(item.value->>'ref', '')
+        COALESCE(item.value->>'ref', ''),
+        COALESCE(item.value->>'responsaveis', ''),
+        COALESCE(item.value->>'encaminhamentos', ''),
+        COALESCE(item.value->>'anexo', '')
     FROM jsonb_array_elements(COALESCE(p_ata->'itens', '[]'::JSONB)) WITH ORDINALITY AS item(value, ordinality);
 
     RETURN v_id;

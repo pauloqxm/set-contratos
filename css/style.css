@@ -632,7 +632,7 @@ tr.is-discussing .read-time { color: var(--orange); }
 
 .ata-token-form .banner { margin-top: 0; }
 
-.ata-meta input:disabled, .ata-item textarea:disabled {
+.ata-meta input:disabled, .ata-item textarea:disabled, .ata-item input:disabled {
   background: #f4f5f5;
   color: var(--ink);
   cursor: default;
@@ -656,7 +656,7 @@ tr.is-discussing .read-time { color: var(--orange); }
   color: var(--ink-soft);
 }
 
-.ata-meta input, .ata-meta select, .ata-search input, .ata-search select, .ata-token-form input, .ata-token-form textarea, .freq-bar select, .freq-bar input, .ata-item textarea {
+.ata-meta input, .ata-meta select, .ata-search input, .ata-search select, .ata-token-form input, .ata-token-form textarea, .freq-bar select, .freq-bar input, .ata-item textarea, .ata-item input {
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
@@ -892,12 +892,41 @@ tr.is-discussing .read-time { color: var(--orange); }
   color: var(--ink-soft);
 }
 
-.ata-item textarea {
-  width: 100%;
-  min-height: 88px;
+.ata-campos {
+  display: grid;
+  gap: 10px;
   margin-top: 10px;
-  resize: vertical;
+}
+
+.ata-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.ata-item textarea,
+.ata-item input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  border: 1px solid #c8cacb;
+  border-radius: 8px;
+  padding: 8px 10px;
   background: var(--white);
+}
+
+.ata-item textarea {
+  min-height: 88px;
+  resize: vertical;
 }
 
 .ata-print-value,
@@ -2037,7 +2066,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #ata-token-dialog,
   body.printing-ata #comite-ponto-dialog,
   body.printing-ata .ata-meta input,
-  body.printing-ata .ata-item textarea { display: none !important; }
+  body.printing-ata .ata-item textarea,
+  body.printing-ata .ata-item input { display: none !important; }
   body.printing-ata,
   body.printing-ata * {
     -webkit-print-color-adjust: exact;
@@ -2061,8 +2091,13 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
     color: #2f9a3d;
   }
   body.printing-ata .ata-texto-print {
-    margin-top: 10px;
+    margin-top: 0;
     min-height: 48px;
+  }
+  body.printing-ata .ata-texto-print.is-curto { min-height: 0; }
+  body.printing-ata .ata-texto-print a {
+    color: #0b6e4f;
+    word-break: break-all;
   }
   body.printing-ata .ata-item {
     background: #e6f3fb !important;

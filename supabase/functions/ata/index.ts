@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     if (!ata) return json(req, 404, { erro: "Ata não encontrada." });
     const { data: itens, error: itensError } = await db
       .from("ata_itens")
-      .select("nup, contrato, contratada, objeto, tempo, texto, ref")
+      .select("nup, contrato, contratada, objeto, tempo, texto, ref, responsaveis, encaminhamentos, anexo")
       .eq("reuniao_id", id)
       .order("ordem");
     if (itensError) return json(req, 500, { erro: itensError.message });

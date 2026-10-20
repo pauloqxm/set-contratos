@@ -124,6 +124,19 @@ const Ata = (() => {
     return formatDuration(value);
   }
 
+  function anexoHref(valor) {
+    const raw = String(valor || "").trim();
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (raw && !/\s/.test(raw) && raw.includes(".")) return `https://${raw}`;
+    return "";
+  }
+
+  function anexoHtml(valor) {
+    const href = anexoHref(valor);
+    if (href) return `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(valor)}</a>`;
+    return esc(String(valor || "").trim() || "—");
+  }
+
   function nomeAta() {
     const data = (dataBR(draft.data) || "").replaceAll("/", "-") || "sem-data";
     return comite() ? `Ata da Reunião do Comitê ${data}` : `Ata da Reunião de Contratos ${data}`;
@@ -291,7 +304,7 @@ const Ata = (() => {
       if (field) field.disabled = trava;
     });
     document.getElementById("ata-tipo").disabled = salva;
-    document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens button, #ata-presenca-recente").forEach((field) => {
+    document.querySelectorAll("#ata-participantes-lista input, #ata-itens textarea, #ata-itens input, #ata-itens button, #ata-presenca-recente").forEach((field) => {
       field.disabled = trava;
     });
   }
@@ -421,6 +434,9 @@ const Ata = (() => {
       objeto: row.objeto || "",
       tempo: "",
       texto: "",
+      responsaveis: "",
+      encaminhamentos: "",
+      anexo: "",
     });
     return true;
   }
@@ -428,7 +444,7 @@ const Ata = (() => {
   function addProjeto(projeto) {
     const key = `p:${projeto.id}`;
     if (draft.itens.find((item) => item.key === key)) return false;
-    draft.itens.push({ key, ref: projeto.id, nup: "", contrato: "", contratada: "", objeto: projeto.nome || projeto.id, tempo: "", texto: "" });
+    draft.itens.push({ key, ref: projeto.id, nup: "", contrato: "", contratada: "", objeto: projeto.nome || projeto.id, tempo: "", texto: "", responsaveis: "", encaminhamentos: "", anexo: "" });
     return true;
   }
 
@@ -500,9 +516,24 @@ const Ata = (() => {
               <button type="button" class="linkish" data-remove="${index}">Tirar</button>
             </div>
           </header>
-          <label class="sr-only" for="ata-texto-${index}">O que foi falado</label>
-          <textarea id="ata-texto-${index}" data-texto="${index}" placeholder="O que foi falado sobre este ${item.ref ? "projeto" : "objeto"}">${esc(item.texto)}</textarea>
-          <div class="ata-texto-print">${esc(item.texto)}</div>
+          <div class="ata-campos">
+            <label>O que foi falado
+              <textarea data-campo="texto" data-index="${index}" placeholder="O que foi falado sobre este ${item.ref ? "ponto" : "objeto"}">${esc(item.texto || "")}</textarea>
+              <span class="ata-texto-print">${esc(item.texto || "")}</span>
+            </label>
+            <label>Responsáveis
+              <input type="text" data-campo="responsaveis" data-index="${index}" maxlength="240" placeholder="Quem ficou responsável" value="${esc(item.responsaveis || "")}" />
+              <span class="ata-texto-print is-curto">${esc(item.responsaveis || "—")}</span>
+            </label>
+            <label>Encaminhamentos
+              <textarea data-campo="encaminhamentos" data-index="${index}" placeholder="O que ficou combinado">${esc(item.encaminhamentos || "")}</textarea>
+              <span class="ata-texto-print">${esc(item.encaminhamentos || "—")}</span>
+            </label>
+            <label>Link de anexo
+              <input type="url" data-campo="anexo" data-index="${index}" maxlength="500" placeholder="https://" value="${esc(item.anexo || "")}" />
+              <span class="ata-texto-print is-curto">${anexoHtml(item.anexo)}</span>
+            </label>
+          </div>
         </article>`;
       })
       .join("");
@@ -575,7 +606,13 @@ const Ata = (() => {
         duracao: ata.duracao,
         inicio: ata.inicio || "",
         fim: ata.fim || "",
-        itens: ata.itens.map((item) => ({ ...item, key: item.ref ? `p:${item.ref}` : item.nup || item.objeto })),
+        itens: ata.itens.map((item) => ({
+          ...item,
+          key: item.ref ? `p:${item.ref}` : item.nup || item.objeto,
+          responsaveis: item.responsaveis || "",
+          encaminhamentos: item.encaminhamentos || "",
+          anexo: item.anexo || "",
+        })),
       };
       editando = false;
       pedindoToken = false;
@@ -626,7 +663,12 @@ const Ata = (() => {
         duracao: draft.duracao,
         inicio: draft.inicio,
         fim: draft.fim,
-        itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto, ref }) => ({ nup, contrato, contratada, objeto, tempo, texto, ref: ref || "" })),
+        itens: draft.itens.map(({ nup, contrato, contratada, objeto, tempo, texto, ref, responsaveis, encaminhamentos, anexo }) => ({
+          nup, contrato, contratada, objeto, tempo, texto, ref: ref || "",
+          responsaveis: responsaveis || "",
+          encaminhamentos: encaminhamentos || "",
+          anexo: anexo || "",
+        })),
       });
       draft.id = id;
       editando = false;
@@ -829,6 +871,22 @@ const Ata = (() => {
         ),
       ]);
       linhas.push([celula(texto, "FFFFFF", "C8CACB", 4)]);
+      const extra = [
+        ["RESPONSÁVEIS", item.responsaveis],
+        ["ENCAMINHAMENTOS", item.encaminhamentos],
+        ["ANEXO", item.anexo],
+      ].filter(([, valor]) => String(valor || "").trim());
+      extra.forEach(([rotulo, valor]) => {
+        linhas.push([
+          celula(
+            paragrafo(rotulo, { tamanho: "16", cor: "6D6E71", depois: "40" }) +
+              paragrafo(valor, { depois: "0" }),
+            "FFFFFF",
+            "C8CACB",
+            4,
+          ),
+        ]);
+      });
     });
     blocos.push(tabela(linhas));
     if (!draft.itens.length) blocos.push(paragrafo(ehComite ? "Nenhum projeto nesta ata." : "Nenhum objeto nesta ata.", { cor: "6D6E71" }));
@@ -947,9 +1005,11 @@ const Ata = (() => {
 
     const items = document.getElementById("ata-itens");
     items.addEventListener("input", (event) => {
-      const field = event.target.closest("textarea[data-texto]");
+      const field = event.target.closest("[data-campo]");
       if (!field) return;
-      draft.itens[Number(field.dataset.texto)].texto = field.value;
+      const item = draft.itens[Number(field.dataset.index)];
+      if (!item) return;
+      item[field.dataset.campo] = field.value;
       saveDraft();
     });
     items.addEventListener("click", (event) => {
@@ -990,9 +1050,11 @@ const Ata = (() => {
         const value = field && field.value;
         span.textContent = span.dataset.print === "ata-data" && value ? dataBR(value) : value || "—";
       });
-      document.querySelectorAll(".ata-item textarea").forEach((area) => {
-        const box = area.parentElement.querySelector(".ata-texto-print");
-        if (box) box.textContent = area.value;
+      document.querySelectorAll(".ata-item [data-campo]").forEach((field) => {
+        const box = field.parentElement.querySelector(".ata-texto-print");
+        if (!box) return;
+        if (field.dataset.campo === "anexo") box.innerHTML = anexoHtml(field.value);
+        else box.textContent = field.value.trim() || "—";
       });
       const nomes = [...document.querySelectorAll("#ata-participantes-lista .freq-check")];
       nomes.forEach((label) => label.classList.remove("is-ultimo"));
