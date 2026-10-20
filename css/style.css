@@ -729,6 +729,48 @@ tr.is-discussing .read-time { color: var(--orange); }
 
 #ata-presenca-recente { margin-top: 8px; }
 
+.ata-freq-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+}
+
+.ata-freq-topo .hint { margin: 0; flex: 1 1 260px; }
+
+.ata-freq-atualizar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid #b7e0da;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f7f74;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ata-freq-atualizar:hover:not(:disabled) { background: #e6f7f5; }
+.ata-freq-atualizar:disabled { opacity: 0.55; cursor: default; }
+.ata-freq-atualizar svg { width: 15px; height: 15px; }
+.ata-freq-atualizar.is-loading svg { animation: ata-girar 0.9s linear infinite; }
+
+@keyframes ata-girar { to { transform: rotate(360deg); } }
+
+.ata-freq-status[hidden] { display: none; }
+
+.ata-freq-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6d6e71;
+}
+
+.ata-freq-status.is-novo { color: #2f9a3d; }
+
 .ata-participantes legend {
   padding: 0 6px;
   font-size: 0.75rem;
@@ -2219,6 +2261,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-extra-acoes,
   body.printing-ata .ata-extra-fechar,
   body.printing-ata #ata-presenca-recente,
+  body.printing-ata #ata-freq-atualizar,
+  body.printing-ata #ata-freq-status,
   body.printing-ata #ata-token-dialog,
   body.printing-ata #comite-ponto-dialog,
   body.printing-ata #diversa-ponto-dialog,

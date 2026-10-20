@@ -345,6 +345,48 @@ const Ata = (() => {
     aplicarTrava();
   }
 
+  function statusFrequencia(texto, novo) {
+    const status = document.getElementById("ata-freq-status");
+    status.hidden = !texto;
+    status.textContent = texto || "";
+    status.classList.toggle("is-novo", Boolean(novo));
+  }
+
+  async function atualizarFrequencia() {
+    const botao = document.getElementById("ata-freq-atualizar");
+    readParticipantes();
+    const antes = new Set((Frequencia.presentes(draft.data, draft.freqSessao) || []).map((pessoa) => chaveNome(pessoa.nome)));
+    nomesSalvos().forEach((nome) => antes.add(chaveNome(nome)));
+    botao.disabled = true;
+    botao.classList.add("is-loading");
+    statusFrequencia("Buscando na planilha…");
+    try {
+      await Frequencia.load(true);
+    } catch (err) {
+      statusFrequencia(Frequencia.erro() || "Não foi possível ler a planilha de presença.");
+      return;
+    } finally {
+      botao.disabled = travada();
+      botao.classList.remove("is-loading");
+    }
+    const novos = (Frequencia.presentes(draft.data, draft.freqSessao) || [])
+      .map((pessoa) => pessoa.nome)
+      .filter((nome) => !antes.has(chaveNome(nome)));
+    if (novos.length && draft.participantes != null) {
+      draft.participantes = nomesSalvos().concat(novos).join(", ");
+    }
+    saveDraft();
+    await renderParticipantes(true);
+    statusFrequencia(
+      novos.length === 0
+        ? "Nenhum nome novo."
+        : novos.length === 1
+          ? "1 novo nome encontrado."
+          : `${novos.length} novos nomes encontrados.`,
+      novos.length > 0
+    );
+  }
+
   function temToken() {
     return Boolean(sessionStorage.getItem(tokenKey));
   }
@@ -382,7 +424,7 @@ const Ata = (() => {
     document.getElementById("ata-save").hidden = trava;
     document.getElementById("ata-save").disabled = false;
     if (!pedindoToken) fecharToken();
-    ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca", "ata-freq-sessao"].forEach((id) => {
+    ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca", "ata-freq-sessao", "ata-freq-atualizar"].forEach((id) => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
     });
@@ -1142,6 +1184,7 @@ const Ata = (() => {
       document.getElementById(id).addEventListener("input", readMeta);
     });
     document.getElementById("ata-data").addEventListener("change", async () => {
+      statusFrequencia("");
       draft.titulo = document.getElementById("ata-titulo").value.trim();
       draft.data = document.getElementById("ata-data").value;
       draft.responsavel_nome = document.getElementById("ata-responsavel").value.trim();
@@ -1167,7 +1210,9 @@ const Ata = (() => {
       input.value = ultima.data;
       input.dispatchEvent(new Event("change"));
     });
+    document.getElementById("ata-freq-atualizar").addEventListener("click", atualizarFrequencia);
     document.getElementById("ata-freq-sessao").addEventListener("change", (event) => {
+      statusFrequencia("");
       draft.freqSessao = event.target.value;
       if (!draft.id) {
         const people = Frequencia.presentes(draft.data, draft.freqSessao) || [];
