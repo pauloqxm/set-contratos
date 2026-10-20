@@ -8,6 +8,7 @@ const Ata = (() => {
   let editando = !draft.id;
   let pedindoToken = false;
   let pendenteExcluir = null;
+  let vistaAtual = "inicio";
   const extrasVisiveis = new Set();
   const extraCampos = [
     {
@@ -225,6 +226,48 @@ const Ata = (() => {
     if (view === "comite") Comite.show();
     if (view === "diversa") Diversa.show();
     if (view === "frequencia") Frequencia.show();
+    vistaAtual = view;
+    pintarAtalhos();
+  }
+
+  function reunioesVivas() {
+    const lista = [];
+    if (state.meeting.startedAt && !state.meeting.endedAt) {
+      lista.push({ view: "painel", tipo: "contratos", nome: "Contratos", titulo: "Gestão de Contratos" });
+    }
+    const doComite = Comite.meeting();
+    if (doComite.startedAt && !doComite.endedAt) {
+      lista.push({ view: "comite", tipo: "comite", nome: "Comitê", titulo: "Comitê Executivo" });
+    }
+    const daDiversa = Diversa.meeting();
+    if (daDiversa.startedAt && !daDiversa.endedAt) {
+      lista.push({ view: "diversa", tipo: "diversa", nome: "Reunião Diversa", titulo: "Reunião Diversa" });
+    }
+    return lista;
+  }
+
+  function pintarAtalhos() {
+    const host = document.getElementById("atalhos-reuniao");
+    if (!host) return;
+    const vivas = reunioesVivas();
+    host.hidden = vivas.length === 0;
+    host.querySelector('[data-atalho="ata"]').classList.toggle("is-on", vistaAtual === "ata");
+    document.getElementById("atalhos-voltar").innerHTML = vivas
+      .map((item) => {
+        const ligado = vistaAtual === item.view ? " is-on" : "";
+        const rotulo = vistaAtual === item.view ? item.nome : `Voltar · ${item.nome}`;
+        return `<button type="button" class="atalho-reuniao${ligado}" data-atalho="${item.view}" title="Abrir ${esc(item.titulo)}">${esc(rotulo)}</button>`;
+      })
+      .join("");
+  }
+
+  function irAtalho(view) {
+    if (view === "ata") {
+      const vivas = reunioesVivas();
+      const alvo = vivas.find((item) => item.view === vistaAtual) || (vivas.length === 1 ? vivas[0] : null);
+      if (alvo) prepararTipo(alvo.tipo);
+    }
+    show(view);
   }
 
   function nomesSalvos() {
@@ -1162,6 +1205,10 @@ const Ata = (() => {
 
   async function boot() {
     if (!(await SSO.exigirLogin())) return;
+    document.getElementById("atalhos-reuniao").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-atalho]");
+      if (button) irAtalho(button.dataset.atalho);
+    });
     document.getElementById("menu-toggle").addEventListener("click", () => toggleMenu());
     document.getElementById("menu-list").addEventListener("click", (event) => {
       const button = event.target.closest(".view-tab");
@@ -1381,6 +1428,7 @@ const Ata = (() => {
       const duracao = document.getElementById("ata-duracao");
       if (duracao) duracao.value = currentDuration() || "Reunião não iniciada";
       fillHorarios();
+      pintarAtalhos();
     },
   };
 })();

@@ -228,6 +228,36 @@ h1 {
 
 .menu-toggle[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
 
+.atalhos-reuniao[hidden] { display: none; }
+
+.atalhos-reuniao,
+.atalhos-voltar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.atalho-reuniao {
+  border: 1px solid var(--green);
+  background: var(--white);
+  color: var(--green-dark);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.atalho-reuniao:hover { background: #e6f7f5; }
+
+.atalho-reuniao.is-on {
+  background: var(--green);
+  color: var(--white);
+}
+
 .menu-icon,
 .menu-icon::before,
 .menu-icon::after {
@@ -2187,7 +2217,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   .topbar-inner { flex-wrap: wrap; }
   .heading { order: 2; flex: 1 1 auto; }
   h1 { white-space: normal; }
-  .view-menu { order: 3; }
+  .view-menu, .atalhos-reuniao { order: 3; }
   .topbar-actions { order: 4; width: 100%; margin-left: 0; align-items: flex-start; flex-wrap: wrap; }
   .updated { text-align: left; white-space: normal; }
   .kpi-strip, .kpi-money, .freq-kpis { grid-template-columns: 1fr; }
@@ -2242,6 +2272,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 
 @media print {
   body.printing-ata .view-menu,
+  body.printing-ata .atalhos-reuniao,
   body.printing-ata #view-inicio,
   body.printing-ata #view-painel,
   body.printing-ata #view-frequencia,
@@ -2323,7 +2354,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata .ata-time { color: #2f9a3d !important; }
   body { background: white; }
   .topbar { position: static; box-shadow: none; }
-  .topbar-actions, .filters, .chips, .pagination, .toolbar-actions, .banner, .alert-hint, .objeto-tip, .view-menu { display: none !important; }
+  .topbar-actions, .filters, .chips, .pagination, .toolbar-actions, .banner, .alert-hint, .objeto-tip, .view-menu, .atalhos-reuniao { display: none !important; }
   .table-scroll { max-height: none; overflow: visible; }
   .panel, .kpi, .alert { box-shadow: none; }
   .contracts { min-width: 0; font-size: 10px; }
