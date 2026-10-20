@@ -1,4 +1,4 @@
-/* Aba Frequência: presenças da planilha do Comitê Executivo, por data. */
+/* Aba Frequência: presenças da planilha, por data. Se o dia tiver mais de um bloco, mostra também o horário. */
 const Frequencia = (() => {
   let records = null;
   let error = "";
@@ -95,29 +95,100 @@ const Frequencia = (() => {
     return pending;
   }
 
-  function presentes(iso) {
-    if (!records) return null;
+  const intervaloSessao = 60;
+
+  function minutos(hora) {
+    const [hour, minute] = String(hora || "00:00").split(":").map(Number);
+    return (hour || 0) * 60 + (minute || 0);
+  }
+
+  function pessoasUnicas(lista) {
     const seen = new Map();
-    records
-      .filter((pessoa) => pessoa.data === iso)
-      .forEach((pessoa) => {
-        const key = norm(pessoa.nome);
-        if (!key || seen.has(key)) return;
-        seen.set(key, pessoa);
-      });
+    lista.forEach((pessoaItem) => {
+      const key = norm(pessoaItem.nome);
+      if (!key || seen.has(key)) return;
+      seen.set(key, pessoaItem);
+    });
     return [...seen.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }
 
-  function datas() {
-    const totals = new Map();
-    const seen = new Set();
-    (records || []).forEach((pessoa) => {
-      const key = `${pessoa.data}|${norm(pessoa.nome)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      totals.set(pessoa.data, (totals.get(pessoa.data) || 0) + 1);
+  function sessoes() {
+    if (!records) return [];
+    const porDia = new Map();
+    records.forEach((pessoaItem) => {
+      if (!porDia.has(pessoaItem.data)) porDia.set(pessoaItem.data, []);
+      porDia.get(pessoaItem.data).push(pessoaItem);
     });
-    return [...totals.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+    const lista = [];
+    [...porDia.keys()].sort().forEach((data) => {
+      const ordem = porDia.get(data).slice().sort((a, b) => a.hora.localeCompare(b.hora) || a.nome.localeCompare(b.nome, "pt-BR"));
+      const blocos = [];
+      ordem.forEach((pessoaItem) => {
+        const last = blocos[blocos.length - 1];
+        if (!last || minutos(pessoaItem.hora) - minutos(last.fim) > intervaloSessao) {
+          blocos.push({ hora: pessoaItem.hora, fim: pessoaItem.hora, pessoas: [pessoaItem] });
+        } else {
+          last.pessoas.push(pessoaItem);
+          if (pessoaItem.hora > last.fim) last.fim = pessoaItem.hora;
+        }
+      });
+      const multi = blocos.length > 1;
+      blocos.forEach((bloco) => {
+        lista.push({
+          id: `${data}T${bloco.hora}`,
+          data,
+          hora: bloco.hora,
+          fim: bloco.fim,
+          multi,
+          people: pessoasUnicas(bloco.pessoas),
+        });
+      });
+    });
+    return lista.sort((a, b) => b.data.localeCompare(a.data) || b.hora.localeCompare(a.hora));
+  }
+
+  function sessoesDoDia(iso) {
+    if (!records) return null;
+    return sessoes().filter((item) => item.data === iso);
+  }
+
+  function labelSessao(sessao, curto) {
+    if (!sessao) return "";
+    const data = curto ? labelCurto(sessao.data) : labelData(sessao.data);
+    return sessao.multi ? `${data} ${sessao.hora}` : data;
+  }
+
+  function resolverSessao(valor) {
+    const lista = sessoes();
+    if (!lista.length) return null;
+    if (!valor) return lista[0];
+    return lista.find((item) => item.id === valor) || lista.find((item) => item.data === valor) || lista[0];
+  }
+
+  function sessaoProxima(iso, hora) {
+    const doDia = sessoesDoDia(iso) || [];
+    if (!doDia.length) return null;
+    if (doDia.length === 1) return doDia[0];
+    const agora = new Date();
+    const padrao = iso === hojeIso()
+      ? `${pad(agora.getHours())}:${pad(agora.getMinutes())}`
+      : doDia[0].hora;
+    const alvo = minutos(hora || padrao);
+    return doDia.slice().sort((a, b) => Math.abs(minutos(a.hora) - alvo) - Math.abs(minutos(b.hora) - alvo))[0];
+  }
+
+  function presentes(iso, sessaoId) {
+    if (!records) return null;
+    const doDia = sessoes().filter((item) => item.data === iso);
+    if (!doDia.length) return [];
+    const sessao = sessaoId
+      ? doDia.find((item) => item.id === sessaoId)
+      : sessaoProxima(iso);
+    return sessao ? sessao.people : doDia[0].people;
+  }
+
+  function datas() {
+    return sessoes().map((sessao) => [sessao.data, sessao.people.length, sessao]);
   }
 
   function labelData(iso) {
@@ -152,21 +223,23 @@ const Frequencia = (() => {
   }
 
   function reunioesEntre(inicio, fim) {
-    return datas().filter(([data]) => data >= inicio && data <= fim);
+    return sessoes().filter((sessao) => sessao.data >= inicio && sessao.data <= fim);
   }
 
   function catalogo() {
     const map = new Map();
-    (records || []).forEach((pessoaItem) => {
-      const chave = norm(pessoaItem.nome);
-      if (!chave) return;
-      let item = map.get(chave);
-      if (!item) {
-        item = { chave, nome: pessoaItem.nome, grafias: new Map(), datas: new Set() };
-        map.set(chave, item);
-      }
-      item.datas.add(pessoaItem.data);
-      item.grafias.set(pessoaItem.nome, (item.grafias.get(pessoaItem.nome) || 0) + 1);
+    sessoes().forEach((sessao) => {
+      sessao.people.forEach((pessoaItem) => {
+        const chave = norm(pessoaItem.nome);
+        if (!chave) return;
+        let item = map.get(chave);
+        if (!item) {
+          item = { chave, nome: pessoaItem.nome, grafias: new Map(), sessoes: new Set() };
+          map.set(chave, item);
+        }
+        item.sessoes.add(sessao.id);
+        item.grafias.set(pessoaItem.nome, (item.grafias.get(pessoaItem.nome) || 0) + 1);
+      });
     });
     map.forEach((item) => {
       item.nome = [...item.grafias.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0][0];
@@ -211,11 +284,11 @@ const Frequencia = (() => {
     }
     const reunioes = reunioesEntre(mes.inicio, mes.fim);
     const pessoas = new Set();
-    (records || []).forEach((item) => {
-      if (item.data >= mes.inicio && item.data <= mes.fim) pessoas.add(norm(item.nome));
+    reunioes.forEach((sessao) => {
+      sessao.people.forEach((item) => pessoas.add(norm(item.nome)));
     });
     const media = reunioes.length
-      ? reunioes.reduce((soma, [, total]) => soma + total, 0) / reunioes.length
+      ? reunioes.reduce((soma, sessao) => soma + sessao.people.length, 0) / reunioes.length
       : null;
     setFigura("freq-kpi-reunioes", String(reunioes.length));
     setFigura("freq-kpi-media", media == null ? "—" : media.toLocaleString("pt-BR", { maximumFractionDigits: 1 }));
@@ -234,8 +307,8 @@ const Frequencia = (() => {
       const previous = Chart.getChart(canvas);
       if (previous) previous.destroy();
     }
-    const ultimas = error || !records ? [] : datas().slice(0, 7).reverse();
-    chartDatas = ultimas.map(([data]) => data);
+    const ultimas = error || !records ? [] : sessoes().slice(0, 7).reverse();
+    chartDatas = ultimas.map((sessao) => sessao.id);
     const semGrafico = !ultimas.length || typeof Chart === "undefined";
     vazio.hidden = !semGrafico;
     box.hidden = semGrafico;
@@ -249,10 +322,10 @@ const Frequencia = (() => {
       type: "bar",
       plugins: plugin,
       data: {
-        labels: ultimas.map(([data]) => labelCurto(data)),
+        labels: ultimas.map((sessao) => labelSessao(sessao, true)),
         datasets: [{
           label: "Presentes",
-          data: ultimas.map(([, total]) => total),
+          data: ultimas.map((sessao) => sessao.people.length),
           backgroundColor: "#39B54A",
           borderRadius: 6,
           maxBarThickness: 48,
@@ -282,8 +355,8 @@ const Frequencia = (() => {
           tooltip: {
             callbacks: {
               title(items) {
-                const data = chartDatas[items[0].dataIndex];
-                return data ? labelData(data) : "";
+                const sessao = resolverSessao(chartDatas[items[0].dataIndex]);
+                return sessao ? labelSessao(sessao) : "";
               },
               label(item) {
                 return `${item.raw} presentes`;
@@ -312,7 +385,7 @@ const Frequencia = (() => {
     }
     const pessoas = catalogo().filter((item) => !busca || norm(item.nome).includes(busca) || item.chave === pessoa);
     select.innerHTML = ['<option value="">Escolha a pessoa</option>']
-      .concat(pessoas.map((item) => `<option value="${esc(item.chave)}">${esc(item.nome)} · ${item.datas.size}</option>`))
+      .concat(pessoas.map((item) => `<option value="${esc(item.chave)}">${esc(item.nome)} · ${item.sessoes.size}</option>`))
       .join("");
     select.value = pessoas.some((item) => item.chave === pessoa) ? pessoa : "";
     if (select.value !== pessoa) pessoa = select.value;
@@ -329,16 +402,15 @@ const Frequencia = (() => {
       return;
     }
     const reunioes = reunioesEntre(periodo.inicio, periodo.fim);
-    const presentesPeriodo = reunioes.filter(([data]) => escolhida.datas.has(data));
+    const presentesPeriodo = reunioes.filter((sessao) => escolhida.sessoes.has(sessao.id));
     const intervalo = `${labelData(periodo.inicio)} a ${labelData(periodo.fim)}`;
     resumo.textContent = presentesPeriodo.length
       ? `${escolhida.nome} esteve em ${presentesPeriodo.length} de ${reunioes.length} ${reunioes.length === 1 ? "reunião" : "reuniões"} entre ${intervalo}.`
       : `${escolhida.nome} não confirmou presença entre ${intervalo}. Houve ${reunioes.length} ${reunioes.length === 1 ? "reunião" : "reuniões"} nesse período.`;
     lista.innerHTML = presentesPeriodo
-      .map(([data]) => {
-        const registro = (records || []).find((item) => item.data === data && norm(item.nome) === pessoa);
-        const extra = registro?.hora ? `<span>${esc(registro.hora)}</span>` : "";
-        return `<li><button type="button" data-data="${esc(data)}"><span class="freq-ok" aria-hidden="true"></span><span class="freq-nome"><strong>${labelData(data)}</strong>${extra}</span></button></li>`;
+      .map((sessao) => {
+        const extra = sessao.multi ? "" : (sessao.people.find((item) => norm(item.nome) === pessoa)?.hora ? `<span>${esc(sessao.hora)}</span>` : "");
+        return `<li><button type="button" data-sessao="${esc(sessao.id)}"><span class="freq-ok" aria-hidden="true"></span><span class="freq-nome"><strong>${esc(labelSessao(sessao))}</strong>${extra}</span></button></li>`;
       })
       .join("");
   }
@@ -354,7 +426,7 @@ const Frequencia = (() => {
       note(error, true);
       return;
     }
-    const options = datas();
+    const options = sessoes();
     if (!options.length) {
       select.innerHTML = "";
       list.innerHTML = "";
@@ -362,12 +434,13 @@ const Frequencia = (() => {
       note("Nenhuma presença na planilha.");
       return;
     }
-    if (!options.some(([data]) => data === selected)) selected = options[0][0];
+    const atual = resolverSessao(selected);
+    selected = atual ? atual.id : options[0].id;
     select.innerHTML = options
-      .map(([data, count]) => `<option value="${esc(data)}">${labelData(data)} · ${count}</option>`)
+      .map((sessao) => `<option value="${esc(sessao.id)}">${esc(labelSessao(sessao))} · ${sessao.people.length}</option>`)
       .join("");
     select.value = selected;
-    const people = presentes(selected) || [];
+    const people = atual ? atual.people : [];
     total.innerHTML = `<strong>${people.length}</strong><span>${people.length === 1 ? "presente" : "presentes"}</span>`;
     list.innerHTML = people
       .map((item) => {
@@ -408,9 +481,9 @@ const Frequencia = (() => {
     document.getElementById("freq-de").addEventListener("change", renderPessoa);
     document.getElementById("freq-ate").addEventListener("change", renderPessoa);
     document.getElementById("freq-pessoa-lista").addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-data]");
+      const button = event.target.closest("button[data-sessao]");
       if (!button) return;
-      selected = button.dataset.data;
+      selected = button.dataset.sessao;
       renderDia();
       document.getElementById("freq-lista").scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
@@ -426,10 +499,23 @@ const Frequencia = (() => {
   }
 
   document.addEventListener("DOMContentLoaded", boot);
-  function ultimaData() {
-    const lista = datas();
-    return lista.length ? lista[0][0] : "";
+  function ultimaSessao() {
+    return sessoes()[0] || null;
   }
 
-  return { show, load, presentes, ultimaData, erro: () => error };
+  function ultimaData() {
+    return ultimaSessao()?.data || "";
+  }
+
+  return {
+    show,
+    load,
+    presentes,
+    sessoesDoDia,
+    sessaoProxima,
+    labelSessao,
+    ultimaSessao,
+    ultimaData,
+    erro: () => error,
+  };
 })();

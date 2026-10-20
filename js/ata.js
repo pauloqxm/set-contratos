@@ -46,20 +46,31 @@ const Ata = (() => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   }
 
+  function tipoDe(valor) {
+    if (valor === "comite" || valor === "diversa") return valor;
+    return "contratos";
+  }
+
   function comite(tipo = draft?.tipo) {
-    return tipo === "comite";
+    return tipoDe(tipo) === "comite";
+  }
+
+  function diversa(tipo = draft?.tipo) {
+    return tipoDe(tipo) === "diversa";
   }
 
   function tituloPadrao(tipo) {
     const hoje = new Date().toLocaleDateString("pt-BR");
-    return comite(tipo) ? `Reunião do Comitê Executivo ${hoje}` : `Reunião de contratos ${hoje}`;
+    if (comite(tipo)) return `Reunião do Comitê Executivo ${hoje}`;
+    if (diversa(tipo)) return `Reunião diversa ${hoje}`;
+    return `Reunião de contratos ${hoje}`;
   }
 
   function emptyDraft(tipo = "contratos") {
     const today = new Date();
     return {
       id: null,
-      tipo: comite(tipo) ? "comite" : "contratos",
+      tipo: tipoDe(tipo),
       titulo: tituloPadrao(tipo),
       data: localISO(today),
       responsavel_nome: "",
@@ -67,6 +78,7 @@ const Ata = (() => {
       duracao: "",
       inicio: "",
       fim: "",
+      freqSessao: "",
       itens: [],
     };
   }
@@ -172,7 +184,9 @@ const Ata = (() => {
 
   function nomeAta() {
     const data = (dataBR(draft.data) || "").replaceAll("/", "-") || "sem-data";
-    return comite() ? `Ata da Reunião do Comitê ${data}` : `Ata da Reunião de Contratos ${data}`;
+    if (comite()) return `Ata da Reunião do Comitê ${data}`;
+    if (diversa()) return `Ata da Reunião Diversa ${data}`;
+    return `Ata da Reunião de Contratos ${data}`;
   }
 
   function toggleMenu(open) {
@@ -187,6 +201,7 @@ const Ata = (() => {
     document.getElementById("view-inicio").hidden = view !== "inicio";
     document.getElementById("view-painel").hidden = view !== "painel";
     document.getElementById("view-comite").hidden = view !== "comite";
+    document.getElementById("view-diversa").hidden = view !== "diversa";
     document.getElementById("view-ata").hidden = view !== "ata";
     document.getElementById("view-frequencia").hidden = view !== "frequencia";
     document.querySelectorAll(".view-tab").forEach((button) => {
@@ -208,6 +223,7 @@ const Ata = (() => {
       loadList();
     }
     if (view === "comite") Comite.show();
+    if (view === "diversa") Diversa.show();
     if (view === "frequencia") Frequencia.show();
   }
 
@@ -233,12 +249,40 @@ const Ata = (() => {
     return `${day}/${month}/${year}`;
   }
 
+  function sessaoEscolhida() {
+    const doDia = Frequencia.sessoesDoDia(draft.data);
+    if (!doDia || !doDia.length) return null;
+    if (draft.freqSessao && doDia.some((item) => item.id === draft.freqSessao)) {
+      return doDia.find((item) => item.id === draft.freqSessao);
+    }
+    return Frequencia.sessaoProxima(draft.data, horariosAtuais().inicio) || doDia[0];
+  }
+
+  function pintarSessoes(doDia) {
+    const wrap = document.getElementById("ata-freq-sessao-wrap");
+    const select = document.getElementById("ata-freq-sessao");
+    if (!wrap || !select) return;
+    if (!doDia || doDia.length < 2) {
+      wrap.hidden = true;
+      draft.freqSessao = doDia?.[0]?.id || "";
+      return;
+    }
+    wrap.hidden = false;
+    const atual = sessaoEscolhida();
+    draft.freqSessao = atual?.id || doDia[0].id;
+    select.innerHTML = doDia
+      .map((sessao) => `<option value="${esc(sessao.id)}">${esc(Frequencia.labelSessao(sessao))} · ${sessao.people.length}</option>`)
+      .join("");
+    select.value = draft.freqSessao;
+  }
+
   async function renderParticipantes(refreshed) {
     const host = document.getElementById("ata-participantes-lista");
     const nota = document.getElementById("ata-participantes-nota");
-    let people = Frequencia.presentes(draft.data);
-    if (people === null) {
+    let doDia = Frequencia.sessoesDoDia(draft.data);
+    if (doDia === null) {
       host.innerHTML = "";
+      pintarSessoes([]);
       nota.textContent = Frequencia.erro() || "Carregando a lista de presença…";
       if (!Frequencia.erro()) {
         try {
@@ -246,9 +290,11 @@ const Ata = (() => {
         } catch (err) {
           /* a nota mostra o erro na próxima passagem */
         }
-        people = Frequencia.presentes(draft.data);
+        doDia = Frequencia.sessoesDoDia(draft.data);
       }
     }
+    pintarSessoes(doDia || []);
+    let people = Frequencia.presentes(draft.data, draft.freqSessao);
     if (!people) {
       nota.textContent = Frequencia.erro() || "Não foi possível ler a lista de presença.";
       document.getElementById("ata-presenca-recente").hidden = true;
@@ -275,17 +321,21 @@ const Ata = (() => {
     const recente = document.getElementById("ata-presenca-recente");
     if (!opcoes.length) {
       host.innerHTML = "";
-      const ultima = Frequencia.ultimaData();
-      recente.hidden = !ultima || ultima === draft.data;
-      recente.textContent = ultima ? `Usar a presença de ${dataBR(ultima)}` : "Usar a presença mais recente";
-      nota.textContent = ultima && ultima !== draft.data
-        ? `Nenhuma presença em ${dataBR(draft.data)}. A mais recente na planilha é ${dataBR(ultima)}.`
-        : "Nenhuma presença registrada nesta data.";
+      const ultima = Frequencia.ultimaSessao();
+      recente.hidden = !ultima || ultima.id === draft.freqSessao;
+      recente.textContent = ultima ? `Usar a presença de ${Frequencia.labelSessao(ultima)}` : "Usar a presença mais recente";
+      nota.textContent = ultima && ultima.data !== draft.data
+        ? `Nenhuma presença em ${dataBR(draft.data)}. A mais recente na planilha é ${Frequencia.labelSessao(ultima)}.`
+        : doDia && doDia.length > 1
+          ? "Nenhuma presença neste horário. Escolha o outro bloco do dia."
+          : "Nenhuma presença registrada nesta data.";
       aplicarTrava();
       return;
     }
     recente.hidden = true;
-    nota.textContent = "Quem confirmou presença na data da ata. Desmarque quem não entra na ata.";
+    nota.textContent = doDia && doDia.length > 1
+      ? "Quem confirmou presença neste horário. Desmarque quem não entra na ata."
+      : "Quem confirmou presença na data da ata. Desmarque quem não entra na ata.";
     host.innerHTML = opcoes
       .map((nome) => {
         const on = marcados.has(chaveNome(nome)) ? " checked" : "";
@@ -332,7 +382,7 @@ const Ata = (() => {
     document.getElementById("ata-save").hidden = trava;
     document.getElementById("ata-save").disabled = false;
     if (!pedindoToken) fecharToken();
-    ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca"].forEach((id) => {
+    ["ata-titulo", "ata-data", "ata-responsavel", "ata-from-checks", "ata-busca", "ata-freq-sessao"].forEach((id) => {
       const field = document.getElementById(id);
       if (field) field.disabled = trava;
     });
@@ -370,6 +420,10 @@ const Ata = (() => {
       const m = Comite.meeting();
       return { startedAt: m.startedAt, inicio: m.inicio, fim: m.fim, elapsed: Comite.elapsed() };
     }
+    if (diversa()) {
+      const m = Diversa.meeting();
+      return { startedAt: m.startedAt, inicio: m.inicio, fim: m.fim, elapsed: Diversa.elapsed() };
+    }
     return { startedAt: state.meeting.startedAt, inicio: state.meeting.inicio, fim: state.meeting.fim, elapsed: meetingElapsed() };
   }
 
@@ -402,17 +456,25 @@ const Ata = (() => {
   }
 
   function aplicarTipo() {
-    const ehComite = comite();
-    document.getElementById("ata-tipo").value = ehComite ? "comite" : "contratos";
-    document.getElementById("ata-heading").textContent = ehComite ? "Ata do Comitê Executivo" : "Ata da reunião de contratos";
-    document.getElementById("ata-subtitulo").textContent = ehComite
-      ? "Descreva o que foi falado sobre cada projeto. O rascunho fica neste navegador até ser salvo."
+    const tipo = tipoDe(draft.tipo);
+    document.getElementById("ata-tipo").value = tipo;
+    document.getElementById("ata-heading").textContent = comite()
+      ? "Ata do Comitê Executivo"
+      : diversa()
+        ? "Ata da reunião diversa"
+        : "Ata da reunião de contratos";
+    document.getElementById("ata-subtitulo").textContent = comite() || diversa()
+      ? "Descreva o que foi falado sobre cada ponto. O rascunho fica neste navegador até ser salvo."
       : "Descreva o que foi falado sobre cada objeto. O rascunho fica neste navegador até ser salvo.";
-    document.getElementById("ata-from-checks").textContent = ehComite ? "Trazer pontos discutidos" : "Trazer contratos lidos";
-    document.getElementById("ata-busca-rotulo").textContent = ehComite ? "Incluir projeto" : "Incluir contrato";
-    document.getElementById("ata-busca").placeholder = ehComite ? "Nome do projeto" : "Objeto, NUP, contrato ou contratada";
-    document.getElementById("ata-vazio").textContent = ehComite
-      ? "Nenhum ponto na ata. Traga os pontos discutidos ou busque um projeto."
+    document.getElementById("ata-from-checks").textContent = comite() || diversa() ? "Trazer pontos discutidos" : "Trazer contratos lidos";
+    document.getElementById("ata-busca-rotulo").textContent = comite() ? "Incluir projeto" : diversa() ? "Incluir ponto" : "Incluir contrato";
+    document.getElementById("ata-busca").placeholder = comite()
+      ? "Nome do projeto"
+      : diversa()
+        ? "Título do ponto"
+        : "Objeto, NUP, contrato ou contratada";
+    document.getElementById("ata-vazio").textContent = comite() || diversa()
+      ? "Nenhum ponto na ata. Traga os pontos discutidos ou busque um ponto da pauta."
       : "Nenhum objeto na ata. Traga os contratos marcados como lidos ou busque um contrato.";
   }
 
@@ -420,18 +482,45 @@ const Ata = (() => {
     if (draft.id) return;
     readMeta();
     const anterior = draft.tipo;
-    draft.tipo = comite(tipo) ? "comite" : "contratos";
-    if (!draft.titulo || draft.titulo === tituloPadrao(anterior)) draft.titulo = tituloPadrao(draft.tipo);
+    draft.tipo = tipoDe(tipo);
+    if (diversa() && Diversa.titulo()) draft.titulo = Diversa.titulo();
+    else if (!draft.titulo || draft.titulo === tituloPadrao(anterior)) draft.titulo = tituloPadrao(draft.tipo);
     draft.itens = [];
     draft.inicio = "";
     draft.fim = "";
     draft.duracao = "";
+    draft.freqSessao = "";
     saveDraft();
     aplicarTipo();
     fillMeta();
     renderItems();
     loadList();
     if (comite()) Comite.load();
+  }
+
+  function prepararTipo(tipo) {
+    if (draft.id) return;
+    const proximo = tipoDe(tipo);
+    if (draft.tipo === proximo) {
+      if (proximo === "diversa" && Diversa.titulo()) {
+        draft.titulo = Diversa.titulo();
+        saveDraft();
+        const campo = document.getElementById("ata-titulo");
+        if (campo) campo.value = draft.titulo;
+      }
+      return;
+    }
+    trocarTipo(proximo);
+  }
+
+  function definirTitulo(titulo) {
+    if (draft.id || !diversa()) return;
+    const valor = String(titulo || "").replace(/\s+/g, " ").trim();
+    if (!valor) return;
+    draft.titulo = valor;
+    saveDraft();
+    const campo = document.getElementById("ata-titulo");
+    if (campo) campo.value = valor;
   }
 
   function fillMeta() {
@@ -481,11 +570,19 @@ const Ata = (() => {
     return true;
   }
 
+  function fontePauta() {
+    if (diversa()) return Diversa.projetos();
+    if (comite()) return Comite.projetos();
+    return [];
+  }
+
   function marcados() {
+    if (diversa()) return Diversa.meeting().checks;
     return comite() ? Comite.meeting().checks : state.meeting.checks;
   }
 
   function reuniaoAtual() {
+    if (diversa()) return Diversa.meeting();
     return comite() ? Comite.meeting() : state.meeting;
   }
 
@@ -512,9 +609,9 @@ const Ata = (() => {
 
   function bringChecks() {
     let added = 0;
-    if (comite()) {
-      Comite.meeting().checks.forEach((_tempo, id) => {
-        const projeto = Comite.projetos().find((item) => item.id === id);
+    if (comite() || diversa()) {
+      reuniaoAtual().checks.forEach((_tempo, id) => {
+        const projeto = fontePauta().find((item) => item.id === id);
         if (projeto && addProjeto(projeto)) added += 1;
       });
     } else {
@@ -585,7 +682,7 @@ const Ata = (() => {
     host.innerHTML = draft.itens
       .map((item, index) => {
         const meta = String(item.ref || "").startsWith("avulso-")
-          ? "Pauta extra"
+          ? (diversa() ? "Ponto" : "Pauta extra")
           : item.ref
             ? "Projeto"
             : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
@@ -617,9 +714,9 @@ const Ata = (() => {
   function suggestions(query) {
     const list = document.getElementById("ata-sugestoes");
     const term = query.trim().toLocaleLowerCase("pt-BR");
-    if (comite()) {
-      const projetos = Comite.projetos();
-      if (term.length >= 2 && !projetos.length) {
+    if (comite() || diversa()) {
+      const projetos = fontePauta();
+      if (comite() && term.length >= 2 && !projetos.length) {
         Comite.load().then(() => {
           if (document.getElementById("ata-busca").value.trim().toLocaleLowerCase("pt-BR") === term && Comite.projetos().length) suggestions(query);
         });
@@ -660,7 +757,7 @@ const Ata = (() => {
               return `<li class="ata-salva-item"><button type="button" class="ata-open${current}" data-open="${esc(ata.id)}"><strong>${esc(when)}</strong> ${esc(ata.titulo)}<span>${esc(who)}</span></button><button type="button" class="btn-danger btn-small" data-delete="${esc(ata.id)}">Excluir</button></li>`;
             })
             .join("")
-        : `<li class="hint">Nenhuma ata ${comite() ? "do Comitê Executivo" : "de contratos"} salva ainda.</li>`;
+        : `<li class="hint">Nenhuma ata ${comite() ? "do Comitê Executivo" : diversa() ? "de reunião diversa" : "de contratos"} salva ainda.</li>`;
     } catch (error) {
       list.innerHTML = "";
       note(error.message, true);
@@ -672,7 +769,8 @@ const Ata = (() => {
       const { ata } = await api("GET", { id });
       draft = {
         id: ata.id,
-        tipo: ata.tipo === "comite" ? "comite" : "contratos",
+        tipo: tipoDe(ata.tipo),
+        freqSessao: "",
         titulo: ata.titulo,
         data: ata.data,
         responsavel_nome: ata.responsavel_nome || "",
@@ -896,10 +994,11 @@ const Ata = (() => {
       return;
     }
     const ehComite = comite();
-    const rotuloItem = ehComite ? "Projeto" : "Contrato";
+    const ehDiversa = diversa();
+    const rotuloItem = ehComite ? "Projeto" : ehDiversa ? "Ponto" : "Contrato";
     const blocos = [
-      paragrafo(ehComite ? "Ata do Comitê Executivo" : "Ata da reunião de contratos", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
-      paragrafo(`Descreva o que foi falado sobre cada ${ehComite ? "projeto" : "objeto"}.`, { tamanho: "18", cor: "6D6E71", depois: "160" }),
+      paragrafo(ehComite ? "Ata do Comitê Executivo" : ehDiversa ? "Ata da reunião diversa" : "Ata da reunião de contratos", { negrito: true, tamanho: "32", cor: "4D4D4D", depois: "80" }),
+      paragrafo(`Descreva o que foi falado sobre cada ${ehComite || ehDiversa ? "ponto" : "objeto"}.`, { tamanho: "18", cor: "6D6E71", depois: "160" }),
     ];
     const horas = fillHorarios();
     const linhas = [[
@@ -921,7 +1020,7 @@ const Ata = (() => {
     ]];
     draft.itens.forEach((item) => {
       const meta = String(item.ref || "").startsWith("avulso-")
-        ? "Pauta extra"
+        ? (ehDiversa ? "Ponto" : "Pauta extra")
         : item.ref
           ? "Projeto"
           : [item.contrato, item.contratada, item.nup].filter(Boolean).join(" · ");
@@ -965,7 +1064,7 @@ const Ata = (() => {
       });
     });
     blocos.push(tabela(linhas));
-    if (!draft.itens.length) blocos.push(paragrafo(ehComite ? "Nenhum projeto nesta ata." : "Nenhum objeto nesta ata.", { cor: "6D6E71" }));
+    if (!draft.itens.length) blocos.push(paragrafo(ehComite ? "Nenhum projeto nesta ata." : ehDiversa ? "Nenhum ponto nesta ata." : "Nenhum objeto nesta ata.", { cor: "6D6E71" }));
     const documento = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>${blocos.join("")}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="851" w:right="851" w:bottom="851" w:left="851"/></w:sectPr></w:body>
@@ -1026,7 +1125,9 @@ const Ata = (() => {
       } catch (err) {
         /* renderParticipantes mostra o erro */
       }
-      const people = Frequencia.presentes(draft.data) || [];
+      const sessao = Frequencia.sessaoProxima(draft.data, horariosAtuais().inicio);
+      draft.freqSessao = sessao?.id || "";
+      const people = Frequencia.presentes(draft.data, draft.freqSessao) || [];
       draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
       saveDraft();
       fillHorarios();
@@ -1034,11 +1135,21 @@ const Ata = (() => {
     });
     document.getElementById("ata-participantes-lista").addEventListener("change", readMeta);
     document.getElementById("ata-presenca-recente").addEventListener("click", () => {
-      const data = Frequencia.ultimaData();
-      if (!data) return;
+      const ultima = Frequencia.ultimaSessao();
+      if (!ultima) return;
+      draft.freqSessao = ultima.id;
       const input = document.getElementById("ata-data");
-      input.value = data;
+      input.value = ultima.data;
       input.dispatchEvent(new Event("change"));
+    });
+    document.getElementById("ata-freq-sessao").addEventListener("change", (event) => {
+      draft.freqSessao = event.target.value;
+      if (!draft.id) {
+        const people = Frequencia.presentes(draft.data, draft.freqSessao) || [];
+        draft.participantes = people.map((pessoa) => pessoa.nome).join(", ");
+      }
+      saveDraft();
+      renderParticipantes();
     });
 
     document.getElementById("ata-tipo").addEventListener("change", (event) => trocarTipo(event.target.value));
@@ -1049,8 +1160,8 @@ const Ata = (() => {
       if (!added && !marcados().size) {
         const empty = document.getElementById("ata-vazio");
         empty.hidden = false;
-        empty.textContent = comite()
-          ? "Nenhum ponto foi marcado como discutido na reunião do Comitê."
+        empty.textContent = comite() || diversa()
+          ? "Nenhum ponto foi marcado como discutido nesta reunião."
           : "Nenhum contrato foi marcado como lido nesta reunião.";
       }
     });
@@ -1059,7 +1170,7 @@ const Ata = (() => {
     document.getElementById("ata-sugestoes").addEventListener("click", (event) => {
       const projetoBtn = event.target.closest("button[data-add-projeto]");
       if (projetoBtn) {
-        const projeto = Comite.projetos().find((item) => item.id === projetoBtn.dataset.addProjeto);
+        const projeto = fontePauta().find((item) => item.id === projetoBtn.dataset.addProjeto);
         if (!projeto) return;
         addProjeto(projeto);
         saveDraft();
@@ -1181,7 +1292,7 @@ const Ata = (() => {
     if (sessionStorage.getItem(returnKey) || vista === "ata") {
       sessionStorage.removeItem(returnKey);
       show("ata");
-    } else if (vista === "frequencia" || vista === "comite" || vista === "painel" || vista === "inicio") {
+    } else if (vista === "frequencia" || vista === "comite" || vista === "diversa" || vista === "painel" || vista === "inicio") {
       show(vista);
     } else {
       aplicarTipo();
@@ -1194,6 +1305,8 @@ const Ata = (() => {
   return {
     show,
     api,
+    prepararTipo,
+    definirTitulo,
     atualizarHorarios() {
       const duracao = document.getElementById("ata-duracao");
       if (duracao) duracao.value = currentDuration() || "Reunião não iniciada";

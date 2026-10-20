@@ -78,10 +78,12 @@ const SSO = (() => {
     const ata = document.getElementById("view-ata");
     const freq = document.getElementById("view-frequencia");
     const comite = document.getElementById("view-comite");
+    const diversa = document.getElementById("view-diversa");
     const painel = document.getElementById("view-painel");
     const view = ata && !ata.hidden ? "ata"
       : freq && !freq.hidden ? "frequencia"
       : comite && !comite.hidden ? "comite"
+      : diversa && !diversa.hidden ? "diversa"
       : painel && !painel.hidden ? "painel"
       : "inicio";
     sessionStorage.setItem("set-vista", view);
@@ -140,7 +142,7 @@ const SSO = (() => {
   }
 
   function limparSessaoLocal() {
-    ["set-reuniao", "set-reuniao-comite", "set-pauta-avulsa", "set-ata-rascunho", "set-ata-token", "set-vista", "set-ata-voltar", idleKey].forEach((key) => {
+    ["set-reuniao", "set-reuniao-comite", "set-reuniao-diversa", "set-pauta-avulsa", "set-pauta-diversa", "set-titulo-diversa", "set-ata-rascunho", "set-ata-token", "set-vista", "set-ata-voltar", idleKey].forEach((key) => {
       sessionStorage.removeItem(key);
     });
   }

@@ -34,7 +34,7 @@ ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_sub TEXT;
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS responsavel_nome TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS inicio TEXT NOT NULL DEFAULT '';
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS fim TEXT NOT NULL DEFAULT '';
--- tipo: 'contratos' (Reunião de Contratos) ou 'comite' (Comitê Executivo).
+-- tipo: 'contratos', 'comite' (Comitê Executivo) ou 'diversa' (Reunião Diversa).
 ALTER TABLE public.ata_reunioes ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'contratos';
 -- ref: id do projeto nas atas do Comitê.
 ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS ref TEXT NOT NULL DEFAULT '';
@@ -61,7 +61,11 @@ AS $$
 DECLARE
     v_id UUID := NULLIF(p_ata->>'id', '')::UUID;
     v_resp_nome TEXT := COALESCE(NULLIF(TRIM(p_ata->>'responsavel_nome'), ''), '');
-    v_tipo TEXT := CASE WHEN p_ata->>'tipo' = 'comite' THEN 'comite' ELSE 'contratos' END;
+    v_tipo TEXT := CASE
+        WHEN p_ata->>'tipo' = 'comite' THEN 'comite'
+        WHEN p_ata->>'tipo' = 'diversa' THEN 'diversa'
+        ELSE 'contratos'
+    END;
 BEGIN
     IF v_id IS NULL THEN
         INSERT INTO ata_reunioes (titulo, data, participantes, duracao, autor_sub, autor_nome, responsavel_nome, inicio, fim, tipo)

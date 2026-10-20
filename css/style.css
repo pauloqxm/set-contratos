@@ -301,6 +301,7 @@ h1 {
 
 .view-ata[hidden],
 .view-comite[hidden],
+.view-diversa[hidden],
 .view-inicio[hidden],
 .view-frequencia[hidden] { display: none; }
 
@@ -308,7 +309,7 @@ h1 {
 
 .inicio-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin: 16px 0 8px;
 }
@@ -345,6 +346,7 @@ h1 {
 
 .inicio-card[data-go="painel"] svg { color: var(--green); }
 .inicio-card[data-go="comite"] svg { color: var(--teal); }
+.inicio-card[data-go="diversa"] svg { color: #c45c26; }
 .inicio-card[data-go="ata"] svg { color: var(--blue); }
 .inicio-card[data-go="frequencia"] svg { color: var(--orange); }
 
@@ -422,6 +424,46 @@ h1 {
 }
 
 .comite-bar .ata-search { min-width: min(100%, 260px); }
+
+.diversa-titulo-campo { flex: 1 1 280px; min-width: min(100%, 280px); }
+
+.diversa-titulo-campo input {
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid #c8cacb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--white);
+}
+
+.ata-freq-sessao[hidden] { display: none; }
+
+.ata-freq-sessao {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.ata-freq-sessao select {
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  border: 1px solid #c8cacb;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--white);
+}
 
 .comite-add {
   width: 36px;
@@ -2162,6 +2204,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #view-painel,
   body.printing-ata #view-frequencia,
   body.printing-ata #view-comite,
+  body.printing-ata #view-diversa,
   body.printing-ata .ata-tipo,
   body.printing-ata #view-ata .ata-head,
   body.printing-ata .freq-check:not(:has(input:checked)),
@@ -2178,6 +2221,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #ata-presenca-recente,
   body.printing-ata #ata-token-dialog,
   body.printing-ata #comite-ponto-dialog,
+  body.printing-ata #diversa-ponto-dialog,
+  body.printing-ata .ata-freq-sessao,
   body.printing-ata .ata-meta input,
   body.printing-ata .ata-item textarea,
   body.printing-ata .ata-item input { display: none !important; }
