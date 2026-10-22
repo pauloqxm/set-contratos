@@ -78,7 +78,7 @@ async function boot() {
 function emptyFilters() {
   return {
     q: "",
-    situacao: [],
+    situacao: ["ATIVO"],
     orgao: [],
     categoria: [],
     modalidade: [],
@@ -594,7 +594,13 @@ function readHash() {
   const filters = emptyFilters();
   filters.q = params.get("q") || "";
   FILTERS.forEach((filter) => {
-    filters[filter.key] = params.getAll(filter.key).filter(Boolean);
+    const values = params.getAll(filter.key).filter(Boolean);
+    if (filter.key === "situacao") {
+      if (params.get("todas-situacoes") === "1") filters.situacao = [];
+      else if (params.has("situacao")) filters.situacao = values;
+      return;
+    }
+    filters[filter.key] = values;
   });
   const alerta = params.get("alerta");
   filters.alerta = alerta === String(CONFIG.alertaCritico) || alerta === String(CONFIG.alertaAtencao) ? alerta : null;
@@ -615,6 +621,10 @@ function writeHash() {
   const params = new URLSearchParams();
   if (state.filters.q) params.set("q", state.filters.q);
   FILTERS.forEach((filter) => {
+    if (filter.key === "situacao" && !state.filters.situacao.length) {
+      params.set("todas-situacoes", "1");
+      return;
+    }
     state.filters[filter.key].forEach((value) => params.append(filter.key, value));
   });
   if (state.filters.alerta) params.set("alerta", state.filters.alerta);
