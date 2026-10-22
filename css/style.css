@@ -1778,34 +1778,35 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 
 .table-scroll { overflow: auto; max-height: min(720px, 70vh); }
 
-.contracts { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 980px; }
+.contracts { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1180px; }
 
-.contracts th:nth-child(1) { width: 8%; }
-.contracts th:nth-child(2) { width: 15%; }
-.contracts th:nth-child(3) { width: 7%; }
-.contracts th:nth-child(4) { width: 9%; }
-.contracts th:nth-child(5) { width: 10%; }
-.contracts th:nth-child(6) { width: 7%; }
-.contracts th:nth-child(7) { width: 8%; }
-.contracts th:nth-child(8) { width: 7%; }
-.contracts th:nth-child(9) { width: 8%; }
-.contracts th:nth-child(10) { width: 9%; }
-.contracts th:nth-child(11) { width: 7%; }
-.contracts th:nth-child(12) { width: 5%; }
+.contracts th:nth-child(1) { width: 4.5%; }
+.contracts th:nth-child(2) { width: 14%; }
+.contracts th:nth-child(3) { width: 6%; }
+.contracts th:nth-child(4) { width: 8.5%; }
+.contracts th:nth-child(5) { width: 8.5%; }
+.contracts th:nth-child(6) { width: 6%; }
+.contracts th:nth-child(7) { width: 6.5%; }
+.contracts th:nth-child(8) { width: 6%; }
+.contracts th:nth-child(9) { width: 7%; }
+.contracts th:nth-child(10) { width: 11%; }
+.contracts th:nth-child(11) { width: 7.5%; }
+.contracts th:nth-child(12) { width: 8%; }
+.contracts th:nth-child(13) { width: 6.5%; }
 
 .contracts th, .contracts td {
   padding: 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
   text-align: left;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
 }
 
 .contracts td:not(.col-objeto) { overflow: hidden; }
 
 .contracts td.col-check { overflow: visible; text-align: center; vertical-align: middle; }
 
-.contracts td:nth-child(10) { text-align: center; overflow: visible; }
+.contracts td:nth-child(10) { text-align: center; }
 
 .contracts th:nth-child(10) button { width: 100%; text-align: center; }
 
@@ -2041,7 +2042,7 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   padding: 4px 9px;
   border-radius: 8px;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

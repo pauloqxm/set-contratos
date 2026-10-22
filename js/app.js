@@ -20,6 +20,7 @@ const COLUMNS = [
   { key: "terminoEfetivo", label: "Término" },
   { key: "diasRestantes", label: "Dias restantes" },
   { key: "categoria", label: "Categoria" },
+  { key: "modalidade", label: "Modalidade" },
   { key: "situacao", label: "Situação" },
 ];
 
@@ -91,7 +92,7 @@ function emptyFilters() {
 }
 
 function bindEvents() {
-  ui.refresh.addEventListener("click", () => reload());
+  ui.refresh.addEventListener("click", () => reload(true));
   ui.meetingBtn.addEventListener("click", startMeeting);
   ui.meetingEnd.addEventListener("click", endMeeting);
   document.getElementById("btn-reset").addEventListener("click", resetFilters);
@@ -198,16 +199,22 @@ function bindEvents() {
   });
 }
 
-async function reload() {
+async function reload(manual) {
   if (state.rows.length) renderTable(currentView());
   ui.refresh.disabled = true;
-  ui.updated.textContent = "Atualizando a planilha…";
+  ui.updated.textContent = manual ? "Consultando a planilha…" : "Atualizando a planilha…";
   const result = await Data.load();
   state.rows = result.rows;
   state.meta = result;
   buildFilterOptions();
   render();
   showStatus(result);
+  if (manual && result.rows.length && !result.fromCache) {
+    const when = Data.formatDateTime(result.fetchedAt);
+    ui.updated.textContent = result.mudou
+      ? `Planilha atualizada em ${when}`
+      : `Nenhuma alteração na planilha · ${when}`;
+  }
   paintMeeting();
   ui.refresh.disabled = false;
 }
@@ -245,7 +252,7 @@ function dim(row, key) {
 function matchRow(row, except) {
   const skip = new Set(except || []);
   if (!skip.has("q") && state.filters.q) {
-    const blob = [row.nup, row.objeto, row.contrato, row.contratada, row.orgao, row.gestor, row.fiscal]
+    const blob = [row.nup, row.objeto, row.contrato, row.contratada, row.orgao, row.modalidade, row.gestor, row.fiscal]
       .join(" ")
       .toLocaleLowerCase("pt-BR");
     if (!blob.includes(state.filters.q.toLocaleLowerCase("pt-BR"))) return false;
@@ -697,6 +704,7 @@ function rowHtml(row) {
     <td data-label="Término">${terminoCell(row)}</td>
     <td data-label="Dias restantes">${diasCell(row)}</td>
     <td data-label="Categoria"><span class="ellipsis" title="${esc(dim(row, "categoria"))}">${esc(dim(row, "categoria"))}</span></td>
+    <td data-label="Modalidade"><span class="ellipsis" title="${esc(dim(row, "modalidade"))}">${esc(dim(row, "modalidade"))}</span></td>
     <td data-label="Situação"><span class="badge ${situacaoClass(row.situacao)}">${esc(dim(row, "situacao"))}</span></td>
   </tr>`;
 }

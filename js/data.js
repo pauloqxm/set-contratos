@@ -197,10 +197,12 @@ const Data = (() => {
     }
   }
 
+  let ultimoCsv = "";
+
   async function fetchCsv() {
     const join = CONFIG.csvUrl.includes("?") ? "&" : "?";
-    const response = await fetch(`${CONFIG.csvUrl}${join}_=${Date.now()}`, {
-      cache: "no-store",
+    const response = await fetch(`${CONFIG.csvUrl}${join}t=${Date.now()}`, {
+      cache: "reload",
       signal: AbortSignal.timeout(20000),
     });
     if (!response.ok) throw new Error(`A planilha respondeu com o status ${response.status}.`);
@@ -212,8 +214,10 @@ const Data = (() => {
       const csv = await fetchCsv();
       const rows = parseCsv(csv);
       if (!rows.length) throw new Error("A planilha não retornou contratos.");
+      const mudou = csv !== ultimoCsv;
+      ultimoCsv = csv;
       saveCache(csv);
-      return { rows, fetchedAt: new Date(), fromCache: false, error: null };
+      return { rows, fetchedAt: new Date(), fromCache: false, error: null, mudou };
     } catch (error) {
       const cached = readCache();
       if (cached) {
