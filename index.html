@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=26" />
+  <link rel="stylesheet" href="css/style.css?v=27" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -735,7 +735,7 @@
   </dialog>
 
   <dialog id="historico-dialog" class="modal historico-dialog" aria-labelledby="historico-title">
-    <div class="modal-top">
+    <div class="modal-top historico-topo">
       <div>
         <p class="eyebrow">Atas anteriores</p>
         <h2 id="historico-title">O que foi falado</h2>
@@ -743,7 +743,10 @@
       </div>
       <button type="button" id="historico-close" class="icon-btn" aria-label="Fechar">×</button>
     </div>
-    <div id="historico-body" class="historico-body"></div>
+    <div id="historico-body" class="historico-body">
+      <div id="historico-lista" class="historico-lista"></div>
+      <nav id="historico-paginacao" class="historico-paginacao" aria-label="Páginas do histórico" hidden></nav>
+    </div>
   </dialog>
 
   <noscript><p class="banner">Este painel precisa de JavaScript para ler a planilha e montar os indicadores.</p></noscript>
@@ -762,6 +765,6 @@
   <script defer src="js/frequencia.js?v=2"></script>
   <script defer src="js/comite.js?v=7"></script>
   <script defer src="js/diversa.js?v=1"></script>
-  <script defer src="js/ata.js?v=28"></script>
+  <script defer src="js/ata.js?v=29"></script>
 </body>
 </html>

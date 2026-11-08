@@ -1418,6 +1418,8 @@ const Ata = (() => {
     }
   }
 
+  const historicoEstado = { mencoes: [], pagina: 1, porPagina: 3 };
+
   function anexoHistorico(valor) {
     const href = anexoHref(valor);
     if (!href) return esc(String(valor || "").trim() || "—");
@@ -1445,25 +1447,70 @@ const Ata = (() => {
     </article>`;
   }
 
+  function limparHistoricoUi() {
+    historicoEstado.mencoes = [];
+    historicoEstado.pagina = 1;
+    const lista = document.getElementById("historico-lista");
+    const nav = document.getElementById("historico-paginacao");
+    if (lista) lista.innerHTML = "";
+    if (nav) {
+      nav.hidden = true;
+      nav.innerHTML = "";
+    }
+  }
+
+  function pintarHistoricoPagina() {
+    const lista = document.getElementById("historico-lista");
+    const nav = document.getElementById("historico-paginacao");
+    const sub = document.getElementById("historico-sub");
+    const total = historicoEstado.mencoes.length;
+    const pages = Math.max(1, Math.ceil(total / historicoEstado.porPagina));
+    if (historicoEstado.pagina > pages) historicoEstado.pagina = pages;
+    const inicio = (historicoEstado.pagina - 1) * historicoEstado.porPagina;
+    const fatia = historicoEstado.mencoes.slice(inicio, inicio + historicoEstado.porPagina);
+    lista.innerHTML = fatia.map(mencaoHtml).join("");
+    sub.textContent = total === 1
+      ? "1 registro nas atas salvas"
+      : `${total} registros nas atas salvas · página ${historicoEstado.pagina} de ${pages}`;
+    if (pages <= 1) {
+      nav.hidden = true;
+      nav.innerHTML = "";
+      return;
+    }
+    nav.hidden = false;
+    const botoes = [`<button type="button" data-hist-page="prev" ${historicoEstado.pagina <= 1 ? "disabled" : ""} aria-label="Página anterior">‹</button>`];
+    for (let page = 1; page <= pages; page += 1) {
+      const atual = page === historicoEstado.pagina ? ' aria-current="page"' : "";
+      botoes.push(`<button type="button" data-hist-page="${page}"${atual}>${page}</button>`);
+    }
+    botoes.push(`<button type="button" data-hist-page="next" ${historicoEstado.pagina >= pages ? "disabled" : ""} aria-label="Próxima página">›</button>`);
+    nav.innerHTML = botoes.join("");
+  }
+
+  function mostrarHistoricoMensagem(html) {
+    limparHistoricoUi();
+    document.getElementById("historico-lista").innerHTML = html;
+  }
+
   async function abrirHistorico({ chave, contrato, tipo, titulo }) {
     const dialog = document.getElementById("historico-dialog");
-    const body = document.getElementById("historico-body");
     const sub = document.getElementById("historico-sub");
     const tituloEl = document.getElementById("historico-title");
     const tipoAta = tipoDe(tipo);
     const chaveBusca = String(chave || contrato || "").trim();
+    limparHistoricoUi();
     if (!chaveBusca) {
       tituloEl.textContent = titulo || "O que foi falado";
       sub.textContent = tipoAta === "comite"
         ? "Este ponto não tem referência para localizar atas anteriores."
         : "Este contrato não tem NUP nem número para localizar atas anteriores.";
-      body.innerHTML = '<p class="hint">Não há chave para buscar o histórico.</p>';
+      mostrarHistoricoMensagem('<p class="hint">Não há chave para buscar o histórico.</p>');
       if (!dialog.open) dialog.showModal();
       return;
     }
     tituloEl.textContent = titulo || "O que foi falado";
     sub.textContent = "Buscando nas atas salvas…";
-    body.innerHTML = '<p class="hint">Carregando…</p>';
+    mostrarHistoricoMensagem('<p class="hint">Carregando…</p>');
     if (!dialog.open) dialog.showModal();
     try {
       const params = { historico: chaveBusca, tipo: tipoAta };
@@ -1481,27 +1528,28 @@ const Ata = (() => {
       }
       const mencoes = Array.isArray(data.mencoes) ? data.mencoes : [];
       if (mencoes.length) {
-        sub.textContent = `${mencoes.length} registro${mencoes.length > 1 ? "s" : ""} nas atas salvas`;
-        body.innerHTML = mencoes.map(mencaoHtml).join("");
+        historicoEstado.mencoes = mencoes;
+        historicoEstado.pagina = 1;
+        pintarHistoricoPagina();
         return;
       }
       const itens = Number(data.itensEncontrados) || 0;
       const outroTipo = Number(data.atasOutroTipo) || 0;
       if (itens > 0 && outroTipo > 0) {
         sub.textContent = "Há registro em ata de outro tipo.";
-        body.innerHTML = `<p class="hint">Foram achados ${itens} item(ns), mas em ata que não é de ${tipoAta === "comite" ? "Comitê" : "contratos"}. Abra a ata salva pelo menu Ata para conferir.</p>`;
+        mostrarHistoricoMensagem(`<p class="hint">Foram achados ${itens} item(ns), mas em ata que não é de ${tipoAta === "comite" ? "Comitê" : "contratos"}. Abra a ata salva pelo menu Ata para conferir.</p>`);
         return;
       }
       if (itens > 0) {
         sub.textContent = "Itens achados sem texto utilizável.";
-        body.innerHTML = `<p class="hint">Há ${itens} item(ns) ligado(s) a este contrato, mas sem “O que foi falado”, responsáveis, encaminhamentos ou anexo.</p>`;
+        mostrarHistoricoMensagem(`<p class="hint">Há ${itens} item(ns) ligado(s) a este contrato, mas sem “O que foi falado”, responsáveis, encaminhamentos ou anexo.</p>`);
         return;
       }
       sub.textContent = "Nenhuma menção nas atas salvas.";
-      body.innerHTML = `<p class="hint">Nada gravado para NUP/contrato <strong>${esc(chaveBusca)}</strong>${contrato ? ` · ${esc(contrato)}` : ""}. Confira se a ata foi concluída e se o item guarda o mesmo NUP ou número do contrato.</p>`;
+      mostrarHistoricoMensagem(`<p class="hint">Nada gravado para NUP/contrato <strong>${esc(chaveBusca)}</strong>${contrato ? ` · ${esc(contrato)}` : ""}. Confira se a ata foi concluída e se o item guarda o mesmo NUP ou número do contrato.</p>`);
     } catch (error) {
       sub.textContent = "Não foi possível ler o histórico.";
-      body.innerHTML = `<p class="banner is-error">${esc(error.message || "Erro ao buscar atas anteriores.")}</p>`;
+      mostrarHistoricoMensagem(`<p class="banner is-error">${esc(error.message || "Erro ao buscar atas anteriores.")}</p>`);
     }
   }
 
@@ -1511,6 +1559,16 @@ const Ata = (() => {
     document.getElementById("historico-close")?.addEventListener("click", () => dialog.close());
     dialog.addEventListener("click", (event) => {
       if (event.target === dialog) dialog.close();
+    });
+    document.getElementById("historico-paginacao")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-hist-page]");
+      if (!button || button.disabled) return;
+      const pages = Math.max(1, Math.ceil(historicoEstado.mencoes.length / historicoEstado.porPagina));
+      const alvo = button.dataset.histPage;
+      if (alvo === "prev") historicoEstado.pagina = Math.max(1, historicoEstado.pagina - 1);
+      else if (alvo === "next") historicoEstado.pagina = Math.min(pages, historicoEstado.pagina + 1);
+      else historicoEstado.pagina = Number(alvo) || 1;
+      pintarHistoricoPagina();
     });
   });
 
