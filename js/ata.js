@@ -1469,13 +1469,36 @@ const Ata = (() => {
       const params = { historico: chaveBusca, tipo: tipoAta };
       if (contrato) params.contrato = String(contrato).trim();
       const data = await api("GET", params);
+      if (!Object.prototype.hasOwnProperty.call(data, "mencoes") || data.historico !== true) {
+        throw new Error(
+          `A função "ata" publicada ainda não tem a busca de histórico (versão ${data.versao || "desconhecida"}). Cole o index.ts novo e faça Deploy de novo.`
+        );
+      }
+      if (data.versao && !String(data.versao).includes("historico")) {
+        throw new Error(
+          `A função "ata" está na versão ${data.versao}. Publique a versão com histórico (historico-3).`
+        );
+      }
       const mencoes = Array.isArray(data.mencoes) ? data.mencoes : [];
-      sub.textContent = mencoes.length
-        ? `${mencoes.length} registro${mencoes.length > 1 ? "s" : ""} nas atas salvas`
-        : "Nenhuma menção nas atas salvas.";
-      body.innerHTML = mencoes.length
-        ? mencoes.map(mencaoHtml).join("")
-        : '<p class="hint">Ainda não há “O que foi falado” gravado para este item.</p>';
+      if (mencoes.length) {
+        sub.textContent = `${mencoes.length} registro${mencoes.length > 1 ? "s" : ""} nas atas salvas`;
+        body.innerHTML = mencoes.map(mencaoHtml).join("");
+        return;
+      }
+      const itens = Number(data.itensEncontrados) || 0;
+      const outroTipo = Number(data.atasOutroTipo) || 0;
+      if (itens > 0 && outroTipo > 0) {
+        sub.textContent = "Há registro em ata de outro tipo.";
+        body.innerHTML = `<p class="hint">Foram achados ${itens} item(ns), mas em ata que não é de ${tipoAta === "comite" ? "Comitê" : "contratos"}. Abra a ata salva pelo menu Ata para conferir.</p>`;
+        return;
+      }
+      if (itens > 0) {
+        sub.textContent = "Itens achados sem texto utilizável.";
+        body.innerHTML = `<p class="hint">Há ${itens} item(ns) ligado(s) a este contrato, mas sem “O que foi falado”, responsáveis, encaminhamentos ou anexo.</p>`;
+        return;
+      }
+      sub.textContent = "Nenhuma menção nas atas salvas.";
+      body.innerHTML = `<p class="hint">Nada gravado para NUP/contrato <strong>${esc(chaveBusca)}</strong>${contrato ? ` · ${esc(contrato)}` : ""}. Confira se a ata foi concluída e se o item guarda o mesmo NUP ou número do contrato.</p>`;
     } catch (error) {
       sub.textContent = "Não foi possível ler o histórico.";
       body.innerHTML = `<p class="banner is-error">${esc(error.message || "Erro ao buscar atas anteriores.")}</p>`;
