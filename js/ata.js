@@ -1445,17 +1445,18 @@ const Ata = (() => {
     </article>`;
   }
 
-  async function abrirHistorico({ chave, tipo, titulo }) {
+  async function abrirHistorico({ chave, contrato, tipo, titulo }) {
     const dialog = document.getElementById("historico-dialog");
     const body = document.getElementById("historico-body");
     const sub = document.getElementById("historico-sub");
     const tituloEl = document.getElementById("historico-title");
     const tipoAta = tipoDe(tipo);
-    if (!chave) {
+    const chaveBusca = String(chave || contrato || "").trim();
+    if (!chaveBusca) {
       tituloEl.textContent = titulo || "O que foi falado";
       sub.textContent = tipoAta === "comite"
         ? "Este ponto não tem referência para localizar atas anteriores."
-        : "Este contrato não tem NUP para localizar atas anteriores.";
+        : "Este contrato não tem NUP nem número para localizar atas anteriores.";
       body.innerHTML = '<p class="hint">Não há chave para buscar o histórico.</p>';
       if (!dialog.open) dialog.showModal();
       return;
@@ -1465,7 +1466,9 @@ const Ata = (() => {
     body.innerHTML = '<p class="hint">Carregando…</p>';
     if (!dialog.open) dialog.showModal();
     try {
-      const data = await api("GET", { historico: chave, tipo: tipoAta });
+      const params = { historico: chaveBusca, tipo: tipoAta };
+      if (contrato) params.contrato = String(contrato).trim();
+      const data = await api("GET", params);
       const mencoes = Array.isArray(data.mencoes) ? data.mencoes : [];
       sub.textContent = mencoes.length
         ? `${mencoes.length} registro${mencoes.length > 1 ? "s" : ""} nas atas salvas`

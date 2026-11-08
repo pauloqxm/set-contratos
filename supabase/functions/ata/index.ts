@@ -29,7 +29,7 @@ function cors(req: Request): Record<string, string> {
   return headers;
 }
 
-const VERSAO = "2026-11-08-historico";
+const VERSAO = "2026-11-08-historico-2";
 
 function tipoAta(valor: unknown): "comite" | "diversa" | "contratos" {
   const tipo = String(valor || "").trim().toLowerCase();
@@ -145,18 +145,33 @@ Deno.serve(async (req) => {
     const historico = String(params.get("historico") || "").trim();
     if (historico) {
       const tipo = tipoAta(params.get("tipo"));
-      const coluna = tipo === "comite" ? "ref" : "nup";
-      const { data, error } = await db
+      const contrato = String(params.get("contrato") || "").trim();
+      let itensQuery = db
         .from("ata_itens")
-        .select("texto, responsaveis, encaminhamentos, anexo, objeto, contrato, nup, ref, ata_reunioes!inner(id, titulo, data, tipo, fim)")
-        .eq(coluna, historico)
-        .eq("ata_reunioes.tipo", tipo)
-        .order("data", { foreignTable: "ata_reunioes", ascending: false })
-        .limit(30);
+        .select("id, reuniao_id, texto, responsaveis, encaminhamentos, anexo, objeto, contrato, nup, ref")
+        .limit(80);
+      if (tipo === "comite") {
+        itensQuery = itensQuery.eq("ref", historico);
+      } else if (contrato && contrato !== historico) {
+        itensQuery = itensQuery.or(`nup.eq."${historico.replace(/"/g, "")}",contrato.eq."${contrato.replace(/"/g, "")}"`);
+      } else {
+        itensQuery = itensQuery.or(`nup.eq."${historico.replace(/"/g, "")}",contrato.eq."${historico.replace(/"/g, "")}"`);
+      }
+      const { data: itens, error } = await itensQuery;
       if (error) return json(req, 500, { erro: error.message });
-      const mencoes = (data ?? [])
+      const ids = [...new Set((itens ?? []).map((item) => item.reuniao_id).filter(Boolean))];
+      if (!ids.length) return json(req, 200, { mencoes: [], versao: VERSAO });
+      const { data: atas, error: atasError } = await db
+        .from("ata_reunioes")
+        .select("id, titulo, data, tipo, fim")
+        .in("id", ids)
+        .eq("tipo", tipo);
+      if (atasError) return json(req, 500, { erro: atasError.message });
+      const porId = new Map((atas ?? []).map((ata) => [ata.id, ata]));
+      const mencoes = (itens ?? [])
         .map((item) => {
-          const ata = item.ata_reunioes as { id: string; titulo: string; data: string; tipo: string; fim: string };
+          const ata = porId.get(item.reuniao_id);
+          if (!ata) return null;
           return {
             ataId: ata.id,
             titulo: ata.titulo,
@@ -170,7 +185,10 @@ Deno.serve(async (req) => {
             anexo: item.anexo || "",
           };
         })
-        .filter((item) => item.texto.trim() || item.responsaveis.trim() || item.encaminhamentos.trim() || item.anexo.trim());
+        .filter((item): item is NonNullable<typeof item> =>
+          Boolean(item && (item.texto.trim() || item.responsaveis.trim() || item.encaminhamentos.trim() || item.anexo.trim()))
+        )
+        .sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.fim).localeCompare(String(a.fim)));
       return json(req, 200, { mencoes, versao: VERSAO });
     }
     const id = params.get("id");

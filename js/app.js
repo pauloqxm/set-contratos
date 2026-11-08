@@ -724,7 +724,7 @@ function objetoCell(row) {
   const discutindo = state.meeting.currentId === row.id;
   const rotulo = row.contrato ? `Contrato ${row.contrato}` : row.objeto || row.nup || "Contrato";
   return `<div class="objeto-wrap"><p class="objeto-text" id="obj-${esc(row.id)}">${esc(text)}</p></div>
-    <button type="button" class="historico-link" data-historico="${esc(row.nup || "")}" data-historico-tipo="contratos" data-historico-titulo="${esc(rotulo)}"${discutindo ? "" : " hidden"}>Atas anteriores</button>`;
+    <button type="button" class="historico-link" data-historico="${esc(row.nup || "")}" data-historico-contrato="${esc(row.contrato || "")}" data-historico-tipo="contratos" data-historico-titulo="${esc(rotulo)}"${discutindo ? "" : " hidden"}>Atas anteriores</button>`;
 }
 
 function pontoRotulo(id) {
@@ -793,6 +793,7 @@ function onTableClick(event) {
     if (typeof Ata !== "undefined" && Ata.abrirHistorico) {
       Ata.abrirHistorico({
         chave: historico.dataset.historico || "",
+        contrato: historico.dataset.historicoContrato || "",
         tipo: historico.dataset.historicoTipo || "contratos",
         titulo: historico.dataset.historicoTitulo || "",
       });
