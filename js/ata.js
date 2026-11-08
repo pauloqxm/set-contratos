@@ -1418,12 +1418,83 @@ const Ata = (() => {
     }
   }
 
+  function anexoHistorico(valor) {
+    const href = anexoHref(valor);
+    if (!href) return esc(String(valor || "").trim() || "—");
+    return `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(valor)}</a>`;
+  }
+
+  function mencaoHtml(item) {
+    const data = item.data ? dataBR(item.data) : "—";
+    const hora = item.fim ? ` · encerrada às ${esc(item.fim)}` : "";
+    const campos = [
+      ["O que foi falado", item.texto, false],
+      ["Responsáveis", item.responsaveis, false],
+      ["Encaminhamentos", item.encaminhamentos, false],
+      ["Anexo", item.anexo, true],
+    ].filter(([, valor]) => String(valor || "").trim());
+    const corpo = campos
+      .map(([rotulo, valor, link]) => `<div class="historico-campo"><span class="historico-campo-label">${rotulo}</span><p>${link ? anexoHistorico(valor) : esc(valor)}</p></div>`)
+      .join("");
+    return `<article class="historico-item">
+      <header>
+        <strong>${esc(data)}${hora}</strong>
+        <span class="hint">${esc(item.titulo || "Ata")}</span>
+      </header>
+      ${corpo || '<p class="hint">Sem registro nesta ata.</p>'}
+    </article>`;
+  }
+
+  async function abrirHistorico({ chave, tipo, titulo }) {
+    const dialog = document.getElementById("historico-dialog");
+    const body = document.getElementById("historico-body");
+    const sub = document.getElementById("historico-sub");
+    const tituloEl = document.getElementById("historico-title");
+    const tipoAta = tipoDe(tipo);
+    if (!chave) {
+      tituloEl.textContent = titulo || "O que foi falado";
+      sub.textContent = tipoAta === "comite"
+        ? "Este ponto não tem referência para localizar atas anteriores."
+        : "Este contrato não tem NUP para localizar atas anteriores.";
+      body.innerHTML = '<p class="hint">Não há chave para buscar o histórico.</p>';
+      if (!dialog.open) dialog.showModal();
+      return;
+    }
+    tituloEl.textContent = titulo || "O que foi falado";
+    sub.textContent = "Buscando nas atas salvas…";
+    body.innerHTML = '<p class="hint">Carregando…</p>';
+    if (!dialog.open) dialog.showModal();
+    try {
+      const data = await api("GET", { historico: chave, tipo: tipoAta });
+      const mencoes = Array.isArray(data.mencoes) ? data.mencoes : [];
+      sub.textContent = mencoes.length
+        ? `${mencoes.length} registro${mencoes.length > 1 ? "s" : ""} nas atas salvas`
+        : "Nenhuma menção nas atas salvas.";
+      body.innerHTML = mencoes.length
+        ? mencoes.map(mencaoHtml).join("")
+        : '<p class="hint">Ainda não há “O que foi falado” gravado para este item.</p>';
+    } catch (error) {
+      sub.textContent = "Não foi possível ler o histórico.";
+      body.innerHTML = `<p class="banner is-error">${esc(error.message || "Erro ao buscar atas anteriores.")}</p>`;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const dialog = document.getElementById("historico-dialog");
+    if (!dialog) return;
+    document.getElementById("historico-close")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  });
+
   document.addEventListener("DOMContentLoaded", boot);
   return {
     show,
     api,
     prepararTipo,
     definirTitulo,
+    abrirHistorico,
     atualizarHorarios() {
       const duracao = document.getElementById("ata-duracao");
       if (duracao) duracao.value = currentDuration() || "Reunião não iniciada";

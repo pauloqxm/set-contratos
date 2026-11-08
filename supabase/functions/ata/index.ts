@@ -29,7 +29,7 @@ function cors(req: Request): Record<string, string> {
   return headers;
 }
 
-const VERSAO = "2026-10-19-diversa";
+const VERSAO = "2026-11-08-historico";
 
 function tipoAta(valor: unknown): "comite" | "diversa" | "contratos" {
   const tipo = String(valor || "").trim().toLowerCase();
@@ -142,6 +142,37 @@ Deno.serve(async (req) => {
   if (req.method === "GET") {
     const params = new URL(req.url).searchParams;
     if (params.get("pauta") === "comite") return pautaComite(req);
+    const historico = String(params.get("historico") || "").trim();
+    if (historico) {
+      const tipo = tipoAta(params.get("tipo"));
+      const coluna = tipo === "comite" ? "ref" : "nup";
+      const { data, error } = await db
+        .from("ata_itens")
+        .select("texto, responsaveis, encaminhamentos, anexo, objeto, contrato, nup, ref, ata_reunioes!inner(id, titulo, data, tipo, fim)")
+        .eq(coluna, historico)
+        .eq("ata_reunioes.tipo", tipo)
+        .order("data", { foreignTable: "ata_reunioes", ascending: false })
+        .limit(30);
+      if (error) return json(req, 500, { erro: error.message });
+      const mencoes = (data ?? [])
+        .map((item) => {
+          const ata = item.ata_reunioes as { id: string; titulo: string; data: string; tipo: string; fim: string };
+          return {
+            ataId: ata.id,
+            titulo: ata.titulo,
+            data: ata.data,
+            fim: ata.fim || "",
+            objeto: item.objeto || "",
+            contrato: item.contrato || "",
+            texto: item.texto || "",
+            responsaveis: item.responsaveis || "",
+            encaminhamentos: item.encaminhamentos || "",
+            anexo: item.anexo || "",
+          };
+        })
+        .filter((item) => item.texto.trim() || item.responsaveis.trim() || item.encaminhamentos.trim() || item.anexo.trim());
+      return json(req, 200, { mencoes, versao: VERSAO });
+    }
     const id = params.get("id");
     if (!id) {
       const tipo = tipoAta(params.get("tipo"));

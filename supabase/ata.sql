@@ -48,6 +48,8 @@ ALTER TABLE public.ata_itens ADD COLUMN IF NOT EXISTS anexo TEXT NOT NULL DEFAUL
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_data ON public.ata_reunioes(data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_reunioes_tipo ON public.ata_reunioes(tipo, data DESC);
 CREATE INDEX IF NOT EXISTS idx_ata_itens_reuniao ON public.ata_itens(reuniao_id, ordem);
+CREATE INDEX IF NOT EXISTS idx_ata_itens_nup ON public.ata_itens(nup) WHERE nup <> '';
+CREATE INDEX IF NOT EXISTS idx_ata_itens_ref ON public.ata_itens(ref) WHERE ref <> '';
 
 ALTER TABLE public.ata_reunioes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ata_itens ENABLE ROW LEVEL SECURITY;

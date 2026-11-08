@@ -203,12 +203,15 @@ const Comite = (() => {
     document.querySelectorAll(".comite-card[data-id]").forEach((card) => {
       const id = card.dataset.id;
       const marked = meeting.checks.has(id);
+      const discussing = meeting.currentId === id;
       card.classList.toggle("is-read", marked);
-      card.classList.toggle("is-discussing", meeting.currentId === id);
+      card.classList.toggle("is-discussing", discussing);
       const time = card.querySelector(".read-time");
       if (time) time.textContent = pontoRotulo(id);
       const box = card.querySelector(".js-comite-check");
       if (box) box.checked = marked;
+      const historico = card.querySelector(".historico-link");
+      if (historico) historico.hidden = !discussing;
     });
   }
 
@@ -274,6 +277,7 @@ const Comite = (() => {
         <div class="comite-card-title">
           <h3>${esc(ponto.nome)}</h3>
           <p class="hint">Ponto adicionado nesta reunião</p>
+          <button type="button" class="historico-link" data-historico="${esc(ponto.id)}" data-historico-tipo="comite" data-historico-titulo="${esc(ponto.nome)}"${discutindo ? "" : " hidden"}>Atas anteriores</button>
         </div>
         <div class="comite-resumo">
           <span class="badge badge-orange">Pauta extra</span>
@@ -313,6 +317,7 @@ const Comite = (() => {
         <div class="comite-card-title">
           <h3>${esc(projeto.nome)}</h3>
           ${projeto.descricao ? `<p class="hint">${esc(projeto.descricao)}</p>` : ""}
+          <button type="button" class="historico-link" data-historico="${esc(projeto.id)}" data-historico-tipo="comite" data-historico-titulo="${esc(projeto.nome)}"${discutindo ? "" : " hidden"}>Atas anteriores</button>
         </div>
         <div class="comite-resumo">
           ${prazo ? `<span class="hint">${esc(prazo)}</span>` : ""}
@@ -460,6 +465,17 @@ const Comite = (() => {
       if (box) marcar(box.dataset.id, box.checked);
     });
     document.getElementById("comite-pauta").addEventListener("click", (event) => {
+      const historico = event.target.closest(".historico-link");
+      if (historico) {
+        if (typeof Ata !== "undefined" && Ata.abrirHistorico) {
+          Ata.abrirHistorico({
+            chave: historico.dataset.historico || "",
+            tipo: historico.dataset.historicoTipo || "comite",
+            titulo: historico.dataset.historicoTitulo || "",
+          });
+        }
+        return;
+      }
       const tirar = event.target.closest("button[data-remove-avulso]");
       if (tirar) {
         removerPonto(tirar.dataset.removeAvulso);

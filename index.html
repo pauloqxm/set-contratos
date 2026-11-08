@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=25" />
+  <link rel="stylesheet" href="css/style.css?v=26" />
 </head>
 <body>
   <main id="auth-gate" class="auth-gate" aria-live="polite">
@@ -734,6 +734,18 @@
     <div id="modal-body" class="modal-body"></div>
   </dialog>
 
+  <dialog id="historico-dialog" class="modal historico-dialog" aria-labelledby="historico-title">
+    <div class="modal-top">
+      <div>
+        <p class="eyebrow">Atas anteriores</p>
+        <h2 id="historico-title">O que foi falado</h2>
+        <p id="historico-sub" class="hint"></p>
+      </div>
+      <button type="button" id="historico-close" class="icon-btn" aria-label="Fechar">×</button>
+    </div>
+    <div id="historico-body" class="historico-body"></div>
+  </dialog>
+
   <noscript><p class="banner">Este painel precisa de JavaScript para ler a planilha e montar os indicadores.</p></noscript>
 
   <script defer src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -746,10 +758,10 @@
   <script defer src="js/sso.js?v=4"></script>
   <script defer src="js/data.js?v=2"></script>
   <script defer src="js/charts.js"></script>
-  <script defer src="js/app.js?v=4"></script>
+  <script defer src="js/app.js?v=5"></script>
   <script defer src="js/frequencia.js?v=2"></script>
-  <script defer src="js/comite.js?v=6"></script>
+  <script defer src="js/comite.js?v=7"></script>
   <script defer src="js/diversa.js?v=1"></script>
-  <script defer src="js/ata.js?v=25"></script>
+  <script defer src="js/ata.js?v=26"></script>
 </body>
 </html>

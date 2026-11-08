@@ -721,7 +721,10 @@ function rowHtml(row) {
 
 function objetoCell(row) {
   const text = row.objeto || Data.VAZIO;
-  return `<div class="objeto-wrap"><p class="objeto-text" id="obj-${esc(row.id)}">${esc(text)}</p></div>`;
+  const discutindo = state.meeting.currentId === row.id;
+  const rotulo = row.contrato ? `Contrato ${row.contrato}` : row.objeto || row.nup || "Contrato";
+  return `<div class="objeto-wrap"><p class="objeto-text" id="obj-${esc(row.id)}">${esc(text)}</p></div>
+    <button type="button" class="historico-link" data-historico="${esc(row.nup || "")}" data-historico-tipo="contratos" data-historico-titulo="${esc(rotulo)}"${discutindo ? "" : " hidden"}>Atas anteriores</button>`;
 }
 
 function pontoRotulo(id) {
@@ -784,6 +787,18 @@ function onTableClick(event) {
     event.stopPropagation();
     return;
   }
+  const historico = event.target.closest(".historico-link");
+  if (historico) {
+    event.stopPropagation();
+    if (typeof Ata !== "undefined" && Ata.abrirHistorico) {
+      Ata.abrirHistorico({
+        chave: historico.dataset.historico || "",
+        tipo: historico.dataset.historicoTipo || "contratos",
+        titulo: historico.dataset.historicoTitulo || "",
+      });
+    }
+    return;
+  }
   const more = event.target.closest(".js-expand");
   if (more) {
     event.stopPropagation();
@@ -840,12 +855,15 @@ function paintPontos() {
   document.querySelectorAll("#table-body tr[data-id]").forEach((row) => {
     const id = row.dataset.id;
     const marked = state.meeting.checks.has(id);
+    const discussing = state.meeting.currentId === id;
     row.classList.toggle("is-read", marked);
-    row.classList.toggle("is-discussing", state.meeting.currentId === id);
+    row.classList.toggle("is-discussing", discussing);
     const time = row.querySelector(".read-time");
     if (time) time.textContent = pontoRotulo(id);
     const box = row.querySelector(".js-read");
     if (box) box.checked = marked;
+    const historico = row.querySelector(".historico-link");
+    if (historico) historico.hidden = !discussing;
   });
 }
 

@@ -2141,6 +2141,71 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
 
 .modal-body { padding: 12px 18px 18px; }
 
+.historico-dialog { width: min(720px, calc(100% - 24px)); }
+
+.historico-body { padding: 12px 18px 18px; display: grid; gap: 12px; }
+
+.historico-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fafafa;
+}
+
+.historico-item header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.historico-item strong { font-size: 0.92rem; }
+
+.historico-item .hint { margin: 0; }
+
+.historico-campo { margin-top: 8px; }
+
+.historico-campo-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.historico-campo p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.historico-link[hidden] { display: none; }
+
+.historico-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.historico-link:hover { color: var(--green-dark); }
+
+.comite-card .historico-link { margin-top: 0; margin-left: 4px; }
+
 .modal-objeto { font-size: 0.95rem; line-height: 1.5; margin: 8px 0 14px; }
 
 .modal-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
@@ -2295,6 +2360,8 @@ button.kpi-block.is-on { box-shadow: 0 0 0 2px var(--danger); }
   body.printing-ata #ata-presenca-recente,
   body.printing-ata #ata-freq-atualizar,
   body.printing-ata #ata-freq-status,
+  body.printing-ata #historico-dialog,
+  body.printing-ata .historico-link,
   body.printing-ata #ata-token-dialog,
   body.printing-ata #comite-ponto-dialog,
   body.printing-ata #diversa-ponto-dialog,
