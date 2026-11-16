@@ -51,11 +51,26 @@ const Frequencia = (() => {
   }
 
   function parse(csv) {
-    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    const vistos = Object.create(null);
+    const parsed = Papa.parse(csv, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader(header) {
+        const base = String(header || "").replace(/\s+/g, " ").trim() || "coluna";
+        const chave = norm(base);
+        if (vistos[chave] == null) {
+          vistos[chave] = 0;
+          return base;
+        }
+        vistos[chave] += 1;
+        if (chave === "nome completo" || chave === "nome") return "Nome completo (livre)";
+        return `${base} (${vistos[chave] + 1})`;
+      },
+    });
     const people = [];
     parsed.data.forEach((row) => {
       const stamp = parseStamp(field(row, ["carimbo de data/hora", "carimbo de data hora"]));
-      const nome = field(row, ["nome completo", "nome"]);
+      const nome = field(row, ["nome completo", "nome"]) || field(row, ["nome completo (livre)"]);
       if (!stamp || !nome || !confirmou(field(row, ["confirmo que estive presente", "presente"]))) return;
       people.push({
         data: stamp.data,
