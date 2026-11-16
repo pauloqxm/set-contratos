@@ -35,6 +35,19 @@ const Frequencia = (() => {
     return text === "sim" || text.startsWith("sim ");
   }
 
+  function nomeInvalido(value) {
+    const text = norm(value);
+    return !text || text === "meu nome nao esta na lista" || text.startsWith("meu nome nao esta na lista");
+  }
+
+  function nomeDaLinha(row) {
+    const lista = field(row, ["nome completo", "nome"]);
+    const livre = field(row, ["nome completo (livre)"]);
+    if (lista && !nomeInvalido(lista)) return lista;
+    if (livre && !nomeInvalido(livre)) return livre;
+    return "";
+  }
+
   function parseStamp(value) {
     const match = String(value || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
     if (!match) return null;
@@ -70,7 +83,7 @@ const Frequencia = (() => {
     const people = [];
     parsed.data.forEach((row) => {
       const stamp = parseStamp(field(row, ["carimbo de data/hora", "carimbo de data hora"]));
-      const nome = field(row, ["nome completo", "nome"]) || field(row, ["nome completo (livre)"]);
+      const nome = nomeDaLinha(row);
       if (!stamp || !nome || !confirmou(field(row, ["confirmo que estive presente", "presente"]))) return;
       people.push({
         data: stamp.data,

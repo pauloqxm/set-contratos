@@ -412,10 +412,15 @@ const Ata = (() => {
       botao.disabled = travada();
       botao.classList.remove("is-loading");
     }
-    const novos = (Frequencia.presentes(draft.data, draft.freqSessao) || [])
+    const doDia = Frequencia.sessoesDoDia(draft.data) || [];
+    pintarSessoes(doDia);
+    const presentes = Frequencia.presentes(draft.data, draft.freqSessao) || [];
+    const novos = presentes
       .map((pessoa) => pessoa.nome)
       .filter((nome) => !antes.has(chaveNome(nome)));
-    if (novos.length && draft.participantes != null) {
+    if (draft.participantes == null) {
+      draft.participantes = presentes.map((pessoa) => pessoa.nome).join(", ");
+    } else if (novos.length) {
       draft.participantes = nomesSalvos().concat(novos).join(", ");
     }
     saveDraft();
